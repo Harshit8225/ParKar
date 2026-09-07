@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Brand from './Brand';
 import UserMenu from './UserMenu';
 import { useAuth } from '../context/AuthContext';
@@ -36,6 +36,22 @@ const PANEL_LINKS = {
   ],
 };
 
+/**
+ * Which single nav link should look active.
+ *
+ * NavLink's own matching highlights every ancestor, so "/owner/lots/new" lights
+ * up both "My Facilities" and "Register Facility". Picking the longest matching
+ * path instead means exactly one link is ever active, and it keeps working as
+ * panels gain deeper routes.
+ */
+const activeLinkFor = (pathname, links = []) => {
+  const matches = links.filter((link) =>
+    link.end ? pathname === link.to : pathname === link.to || pathname.startsWith(`${link.to}/`),
+  );
+  if (matches.length === 0) return null;
+  return matches.reduce((best, link) => (link.to.length > best.to.length ? link : best)).to;
+};
+
 const SiteHeader = () => {
   const { isAuthenticated, loading, role } = useAuth();
   const { pathname } = useLocation();
@@ -53,6 +69,7 @@ const SiteHeader = () => {
   useEffect(() => setMenuOpen(false), [pathname]);
 
   const panelLinks = PANEL_LINKS[role];
+  const activeLink = activeLinkFor(pathname, panelLinks);
   const onLanding = pathname === '/';
   // Anchors have to be absolute once we are away from the landing page.
   const marketingHref = (hash) => (onLanding ? hash : `/${hash}`);
@@ -71,18 +88,18 @@ const SiteHeader = () => {
         <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
           {panelLinks
             ? panelLinks.map((link) => (
-                <NavLink
+                <Link
                   key={link.to}
                   to={link.to}
-                  end={link.end}
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-2 text-sm font-medium transition ${
-                      isActive ? 'bg-brand-50 text-brand-700' : 'text-ink-500 hover:bg-slate-100 hover:text-ink-900'
-                    }`
-                  }
+                  aria-current={activeLink === link.to ? 'page' : undefined}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    activeLink === link.to
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'text-ink-500 hover:bg-slate-100 hover:text-ink-900'
+                  }`}
                 >
                   {link.label}
-                </NavLink>
+                </Link>
               ))
             : MARKETING_LINKS.map((link) => (
                 <a
@@ -140,18 +157,16 @@ const SiteHeader = () => {
         <nav aria-label="Mobile" className="border-t border-slate-100 bg-white px-4 py-2 md:hidden">
           {panelLinks
             ? panelLinks.map((link) => (
-                <NavLink
+                <Link
                   key={link.to}
                   to={link.to}
-                  end={link.end}
-                  className={({ isActive }) =>
-                    `block rounded-lg px-3 py-2.5 text-sm font-medium ${
-                      isActive ? 'bg-brand-50 text-brand-700' : 'text-ink-700 hover:bg-slate-50'
-                    }`
-                  }
+                  aria-current={activeLink === link.to ? 'page' : undefined}
+                  className={`block rounded-lg px-3 py-2.5 text-sm font-medium ${
+                    activeLink === link.to ? 'bg-brand-50 text-brand-700' : 'text-ink-700 hover:bg-slate-50'
+                  }`}
                 >
                   {link.label}
-                </NavLink>
+                </Link>
               ))
             : MARKETING_LINKS.map((link) => (
                 <a

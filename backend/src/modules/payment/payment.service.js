@@ -77,6 +77,44 @@ const toCheckoutPayload = (transaction, order, { name, description, prefill }) =
   mockPaymentId: order.mock ? `pay_mock_${order.id.slice(-10)}` : undefined,
 });
 
+/**
+ * Settle a booking that costs nothing, without involving the gateway.
+ *
+ * Razorpay cannot raise a zero-rupee order, and there is nothing to authorise,
+ * so a fully-discounted booking is recorded as paid here. The transaction still
+ * exists with its full settlement breakdown, and the method records *why* no
+ * money moved, so a coupon-settled booking is auditable rather than invisible.
+ */
+const settleWithoutGateway = async ({ user, booking, lot, reason = 'coupon' }) => {
+  if (booking.pricing.amount > 0) {
+    throw ApiError.badRequest('This booking has an amount to pay');
+  }
+
+  const existing = await Transaction.findOne({ booking: booking._id, purpose: PAYMENT_PURPOSE.BOOKING });
+  if (existing) return existing;
+
+  const transaction = await Transaction.create({
+    transactionId: newTransactionId(),
+    user: user._id,
+    booking: booking._id,
+    parkingLot: lot._id,
+    purpose: PAYMENT_PURPOSE.BOOKING,
+    amount: 0,
+    currency: booking.pricing.currency,
+    status: PAYMENT_STATUS.PAID,
+    paidAt: new Date(),
+    razorpay: { method: reason },
+    settlement: computeSettlement(0, lot),
+  });
+
+  logger.info(
+    `Booking ${booking.bookingId} settled without the gateway (${reason})` +
+      `${booking.pricing.coupon ? `, code ${booking.pricing.coupon.code}` : ''}`,
+  );
+
+  return transaction;
+};
+
 /** Create (or reuse) the pre-booking payment order for a booking. */
 const createBookingOrder = async ({ user, booking, lot }) => {
   // Reuse an outstanding order so a page refresh does not spawn duplicates.
@@ -339,6 +377,7 @@ const getLotForTransaction = async (transaction) => ParkingLot.findById(transact
 
 module.exports = {
   createBookingOrder,
+  settleWithoutGateway,
   createSessionOrder,
   capturePayment,
   recordFailure,

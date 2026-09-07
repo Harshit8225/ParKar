@@ -72,6 +72,11 @@ const FacilityPanel = ({
   const [quoteError, setQuoteError] = useState('');
   const [error, setError] = useState('');
 
+  // `couponInput` is what is being typed; `appliedCoupon` is what the quote was
+  // priced with. Keeping them apart stops every keystroke re-pricing.
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState('');
+
   useEffect(() => {
     let cancelled = false;
     setQuoting(true);
@@ -83,13 +88,15 @@ const FacilityPanel = ({
         vehicleType,
         expectedEntryTime: parkingWindow.entry.toISOString(),
         expectedExitTime: parkingWindow.exit.toISOString(),
+        couponCode: appliedCoupon || undefined,
       })
       .then((result) => {
         if (!cancelled) setQuote(result);
       })
       .catch((err) => {
         if (!cancelled) {
-          setQuote(null);
+          // A rejected code must not wipe the price; drop the code and re-quote.
+          if (appliedCoupon) setAppliedCoupon('');
           setQuoteError(errorMessage(err, 'Could not price this window.'));
         }
       })
@@ -100,7 +107,7 @@ const FacilityPanel = ({
     return () => {
       cancelled = true;
     };
-  }, [lot.id, vehicleType, parkingWindow.entry, parkingWindow.exit]);
+  }, [lot.id, vehicleType, parkingWindow.entry, parkingWindow.exit, appliedCoupon]);
 
   const available = lot.available[vehicleType];
   const soldOut = available <= 0;
@@ -128,7 +135,15 @@ const FacilityPanel = ({
         vehicleType,
         expectedEntryTime: parkingWindow.entry.toISOString(),
         durationHours: parkingWindow.hours,
+        couponCode: appliedCoupon || undefined,
       });
+
+      // A fully-discounted booking is already confirmed by the server - there is
+      // no order to take to the gateway.
+      if (result.payment?.settled) {
+        navigate(`/app/bookings/${result.booking.bookingId}?paid=1`);
+        return;
+      }
 
       await pay(
         { ...result.payment, description: `Parking at ${lot.name}` },
@@ -282,7 +297,51 @@ const FacilityPanel = ({
                     </dd>
                   </div>
                 )}
+                {quote.coupon && (
+                  <div className="flex justify-between">
+                    <dt className="text-ink-500">
+                      Code {quote.coupon.code} ({quote.coupon.discountPercent}% off)
+                    </dt>
+                    <dd className="font-medium text-emerald-700">-{money(quote.discountAmount)}</dd>
+                  </div>
+                )}
               </dl>
+
+              {/* Discount code. Only offered when the server has any configured. */}
+              {quote.couponsAvailable &&
+                (quote.coupon ? (
+                  <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-emerald-50 px-3 py-2 ring-1 ring-inset ring-emerald-200">
+                    <span className="text-xs font-semibold text-emerald-800">{quote.coupon.code} applied</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAppliedCoupon('');
+                        setCouponInput('');
+                      }}
+                      className="text-xs font-medium text-emerald-700 underline-offset-2 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      value={couponInput}
+                      onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                      placeholder="Discount code"
+                      aria-label="Discount code"
+                      className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium uppercase tracking-wider text-ink-900 placeholder:font-normal placeholder:tracking-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setAppliedCoupon(couponInput.trim())}
+                      disabled={!couponInput.trim()}
+                      className="shrink-0 rounded-lg bg-ink-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                ))}
             </>
           ) : null}
         </div>
@@ -307,7 +366,11 @@ const FacilityPanel = ({
                 className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
               />
             )}
-            {quote ? `Pay ${money(quote.amount)} and book` : 'Book this slot'}
+            {!quote
+              ? 'Book this slot'
+              : quote.amount <= 0
+                ? 'Confirm booking (free)'
+                : `Pay ${money(quote.amount)} and book`}
           </button>
           <p className="mt-2.5 text-xs text-ink-500">Bookings cannot be cancelled or refunded once paid.</p>
         </div>

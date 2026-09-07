@@ -15,6 +15,7 @@ const createBookingSchema = z
     // Either give an explicit exit time, or a duration and let the server derive it.
     expectedExitTime: v.isoDate.optional(),
     durationHours: z.coerce.number().int().min(1).max(MAX_DURATION_HOURS).optional(),
+    couponCode: z.string().trim().max(32).optional(),
   })
   .refine((value) => value.expectedExitTime || value.durationHours, {
     path: ['durationHours'],

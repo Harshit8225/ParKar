@@ -21,7 +21,7 @@ import MyLots from './pages/owner/MyLots';
 import LotForm from './pages/owner/LotForm';
 import LotManage from './pages/owner/LotManage';
 import GateTerminal from './pages/owner/GateTerminal';
-import BusinessProfile from './pages/owner/BusinessProfile';
+import OwnerProfile from './pages/owner/Profile';
 
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminFacilities from './pages/admin/Facilities';
@@ -114,7 +114,7 @@ const App = () => (
           <Route path="lots/:id" element={<LotManage />} />
           <Route path="lots/:id/edit" element={<LotForm />} />
           <Route path="gate" element={<GateTerminal />} />
-          <Route path="profile" element={<BusinessProfile />} />
+          <Route path="profile" element={<OwnerProfile />} />
         </Route>
 
         {/* ---- Platform admin panel ---- */}

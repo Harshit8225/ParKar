@@ -161,9 +161,6 @@ const GateTerminal = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-ink-900">Gate terminal</h1>
-        <p className="text-sm text-ink-500">
-          Capture a number plate at the entrance or exit. Recognition runs on the server via Gemini Vision.
-        </p>
       </div>
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
@@ -239,7 +236,7 @@ const GateTerminal = () => {
             </div>
           </Card>
 
-          <Card title="Manual plate entry" subtitle="Use this when the plate cannot be read by the camera.">
+          <Card title="Manual plate entry">
             <form onSubmit={handleManual} className="flex flex-wrap items-end gap-3">
               <Field label="Vehicle number" className="flex-1 min-w-[12rem]">
                 <Input
@@ -391,10 +388,16 @@ const GateResult = ({ result, busy, mode }) => {
                 </div>
               )}
             </dl>
-            {result.bill.amountDue > 0 && (
+            {result.bill.amountDue > 0 ? (
               <Alert kind="warning">
                 The driver owes {money(result.bill.amountDue)} for overstaying. It has been added to their account and can be
                 paid from their dashboard.
+              </Alert>
+            ) : (
+              // Say it outright. An attendant should not have to infer "nothing
+              // to collect" from the absence of a red line.
+              <Alert kind="success">
+                Nothing further to collect - the booking covered the whole stay. Wave the vehicle through.
               </Alert>
             )}
           </div>

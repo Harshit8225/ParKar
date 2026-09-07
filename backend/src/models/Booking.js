@@ -30,9 +30,18 @@ const bookingSchema = new mongoose.Schema(
         dayOfWeek: { type: Number, default: 1 },
         combined: { type: Number, default: 1 },
       },
+      // `amount` is always what the driver actually pays. When a coupon was
+      // used the pre-discount figure is kept alongside it, so settlement and
+      // reporting can still see what the parking was priced at.
       amount: { type: Number, required: true, min: 0 },
       currency: { type: String, default: 'INR' },
       breakdown: [{ label: String, amount: Number }],
+      coupon: {
+        code: { type: String, uppercase: true, trim: true },
+        discountPercent: { type: Number, min: 0, max: 100 },
+        discountAmount: { type: Number, min: 0 },
+        originalAmount: { type: Number, min: 0 },
+      },
     },
 
     status: { type: String, enum: Object.values(BOOKING_STATUS), default: BOOKING_STATUS.PENDING_PAYMENT, index: true },

@@ -109,7 +109,14 @@ const recognizePlate = async ({ imageBuffer, mimeType = 'image/jpeg' }) => {
         ],
         generationConfig: {
           temperature: 0,
-          maxOutputTokens: 256,
+          // Gemini 2.5 is a thinking model and its reasoning tokens are drawn
+          // from this same budget. Transcribing a plate needs no reasoning, so
+          // thinking is switched off - that keeps the whole budget for the
+          // answer and roughly halves the latency. The ceiling is generous
+          // anyway: the JSON is ~30 tokens, and running out silently produces
+          // an empty response that reads exactly like an unreadable plate.
+          thinkingConfig: { thinkingBudget: 0 },
+          maxOutputTokens: 512,
           responseMimeType: 'application/json',
           responseSchema: RESPONSE_SCHEMA,
         },
@@ -139,16 +146,32 @@ const recognizePlate = async ({ imageBuffer, mimeType = 'image/jpeg' }) => {
   const parsed = extractJson(text);
 
   if (!parsed) {
-    logger.warn('Gemini returned an unparseable response:', text.slice(0, 200));
+    // A truncated answer looks identical to an unreadable plate downstream, so
+    // say which it was - this is the difference between "clean the camera" and
+    // "the token budget is too small".
+    const finishReason = candidate?.finishReason;
+    if (finishReason && finishReason !== 'STOP') {
+      logger.error(
+        `Gemini stopped early (${finishReason}); no plate was returned. Output tokens: ` +
+          `${response.data?.usageMetadata?.candidatesTokenCount ?? 0}, thinking: ` +
+          `${response.data?.usageMetadata?.thoughtsTokenCount ?? 0}.`,
+      );
+    } else {
+      logger.warn('Gemini returned an unparseable response:', text.slice(0, 200));
+    }
+
     return {
       plate: null,
       normalizedPlate: null,
       confidence: 0,
       vehicleTypeGuess: 'unknown',
-      notes: 'Recognition response could not be parsed',
+      notes:
+        finishReason && finishReason !== 'STOP'
+          ? `Recognition was cut short (${finishReason})`
+          : 'Recognition response could not be parsed',
       latencyMs,
       model: env.gemini.model,
-      raw: { text: text.slice(0, 500) },
+      raw: { text: text.slice(0, 500), finishReason },
     };
   }
 

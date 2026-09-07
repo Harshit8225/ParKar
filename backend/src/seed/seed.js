@@ -1,9 +1,14 @@
 'use strict';
 
 /**
- * Development seed. Creates one admin, two owners with approved facilities in
- * Bengaluru, two drivers, and a completed booking + session so the analytics
- * dashboards have something to show on first load.
+ * Development seed. Creates one admin, three owners, two drivers, and a
+ * completed booking + session so the analytics dashboards have something to
+ * show on first load.
+ *
+ * owner1 holds every Gorakhpur facility plus two in Bengaluru, owner2 has two
+ * in Bengaluru, and owner3 is deliberately left with none - a freshly signed-up
+ * operator, which is the only way to exercise the empty states and the
+ * register-a-facility flow.
  *
  * Destructive: it clears the collections it owns. Refuses to run in production.
  */
@@ -79,58 +84,6 @@ const OWNERS = [
         zone: 'commercial',
         rating: { average: 4.1, count: 96 },
       },
-    ],
-  },
-  {
-    name: 'Priya Nair',
-    email: 'owner2@parking.dev',
-    phone: '+91 98450 22222',
-    businessName: 'Airport Express Parking',
-    lots: [
-      {
-        name: 'Kempegowda Airport Long Stay',
-        description: 'Long-stay parking with shuttle service to the terminal.',
-        address: 'Airport Road, Devanahalli, Bengaluru',
-        city: 'Bengaluru',
-        state: 'Karnataka',
-        pincode: '560300',
-        latitude: 13.1986,
-        longitude: 77.7066,
-        capacity: { two_wheeler: 80, four_wheeler: 300 },
-        hourlyRate: { two_wheeler: 25, four_wheeler: 70 },
-        amenities: { evCharging: true, covered: true, security: true, cctv: true },
-        operatingHours: { is24x7: true, openTime: '00:00', closeTime: '23:59' },
-        zone: 'airport',
-        rating: { average: 4.7, count: 512 },
-      },
-      {
-        name: 'Koramangala Forum Mall Parking',
-        description: 'Basement parking below the mall, entry from 80ft Road.',
-        address: '21, Hosur Road, Koramangala, Bengaluru',
-        city: 'Bengaluru',
-        state: 'Karnataka',
-        pincode: '560095',
-        latitude: 12.9345,
-        longitude: 77.6114,
-        capacity: { two_wheeler: 100, four_wheeler: 180 },
-        hourlyRate: { two_wheeler: 20, four_wheeler: 60 },
-        amenities: { evCharging: true, covered: true, security: true, cctv: false },
-        operatingHours: { is24x7: false, openTime: '09:00', closeTime: '23:30' },
-        zone: 'mall',
-        rating: { average: 4.3, count: 341 },
-        // Left pending so the admin panel has something to approve.
-        status: LOT_STATUS.PENDING,
-      },
-    ],
-  },
-  {
-    name: 'Anil Tripathi',
-    email: 'owner3@parking.dev',
-    phone: '+91 94150 33333',
-    businessName: 'Gorakhpur Smart Parking',
-    address: 'Gorakhpur, Uttar Pradesh',
-    gstStateCode: '09',
-    lots: [
       {
         name: 'Gorakhpur Junction Station Parking',
         description: 'Multilevel parking at the main entrance of Gorakhpur Junction, open all night.',
@@ -227,6 +180,58 @@ const OWNERS = [
         zone: 'hospital',
         rating: { average: 4.0, count: 121 },
       },
+    ],
+  },
+  {
+    name: 'Priya Nair',
+    email: 'owner2@parking.dev',
+    phone: '+91 98450 22222',
+    businessName: 'Airport Express Parking',
+    lots: [
+      {
+        name: 'Kempegowda Airport Long Stay',
+        description: 'Long-stay parking with shuttle service to the terminal.',
+        address: 'Airport Road, Devanahalli, Bengaluru',
+        city: 'Bengaluru',
+        state: 'Karnataka',
+        pincode: '560300',
+        latitude: 13.1986,
+        longitude: 77.7066,
+        capacity: { two_wheeler: 80, four_wheeler: 300 },
+        hourlyRate: { two_wheeler: 25, four_wheeler: 70 },
+        amenities: { evCharging: true, covered: true, security: true, cctv: true },
+        operatingHours: { is24x7: true, openTime: '00:00', closeTime: '23:59' },
+        zone: 'airport',
+        rating: { average: 4.7, count: 512 },
+      },
+      {
+        name: 'Koramangala Forum Mall Parking',
+        description: 'Basement parking below the mall, entry from 80ft Road.',
+        address: '21, Hosur Road, Koramangala, Bengaluru',
+        city: 'Bengaluru',
+        state: 'Karnataka',
+        pincode: '560095',
+        latitude: 12.9345,
+        longitude: 77.6114,
+        capacity: { two_wheeler: 100, four_wheeler: 180 },
+        hourlyRate: { two_wheeler: 20, four_wheeler: 60 },
+        amenities: { evCharging: true, covered: true, security: true, cctv: false },
+        operatingHours: { is24x7: false, openTime: '09:00', closeTime: '23:30' },
+        zone: 'mall',
+        rating: { average: 4.3, count: 341 },
+        // Left pending so the admin panel has something to approve.
+        status: LOT_STATUS.PENDING,
+      },
+    ],
+  },
+  {
+    name: 'Anil Tripathi',
+    email: 'owner3@parking.dev',
+    phone: '+91 94150 33333',
+    businessName: 'Gorakhpur Smart Parking',
+    address: 'Gorakhpur, Uttar Pradesh',
+    gstStateCode: '09',
+    lots: [
     ],
   },
 ];
@@ -536,9 +541,18 @@ const run = async () => {
   }
 
   logger.info('Creating booking history...');
-  const mgRoad = createdLots[0];
-  const indiranagar = createdLots[1];
-  const airport = createdLots[2];
+  // Looked up by name, not by position: the order of OWNERS and their lots
+  // changes as facilities are added, and history pinned to an index silently
+  // attaches itself to the wrong facility when it does.
+  const lotNamed = (name) => {
+    const lot = createdLots.find((candidate) => candidate.name === name);
+    if (!lot) throw new Error(`Seed history expected a lot named "${name}"`);
+    return lot;
+  };
+
+  const mgRoad = lotNamed('MG Road Multilevel Parking');
+  const indiranagar = lotNamed('Indiranagar 100ft Road Parking');
+  const airport = lotNamed('Kempegowda Airport Long Stay');
 
   await seedHistory({
     driver: drivers[0],

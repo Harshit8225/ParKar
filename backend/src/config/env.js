@@ -59,6 +59,14 @@ const env = {
     avatarFolder: process.env.CLOUDINARY_AVATAR_FOLDER || 'parkar/avatars',
   },
 
+  // Discount codes, as "CODE:percent" pairs. A 100% code settles a booking
+  // without the gateway, so it is a payment bypass: off in production unless
+  // ALLOW_TEST_COUPONS is set deliberately.
+  coupons: {
+    testCodes: process.env.TEST_COUPONS || '',
+    allowInProduction: process.env.ALLOW_TEST_COUPONS === 'true',
+  },
+
   platform: {
     commissionPercent: num(process.env.PLATFORM_COMMISSION_PERCENT, 10),
     currency: process.env.DEFAULT_CURRENCY || 'INR',

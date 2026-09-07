@@ -10,6 +10,7 @@ const { isSameDay, minutesBetween } = require('../../utils/time');
 const { normalizePlate } = require('../../utils/plate');
 const pricingService = require('../pricing/pricing.service');
 const paymentService = require('../payment/payment.service');
+const coupons = require('../../services/coupon.service');
 
 /**
  * How early a driver may book relative to their stated entry time. Reservations
@@ -173,6 +174,10 @@ const createBooking = async (user, input) => {
         exitTime: input.expectedExitTime,
       });
 
+      // Re-resolved here rather than taken from the client: the browser's quote
+      // is a preview, and the payable amount must come from the server.
+      const discounted = coupons.price(priced.amount, input.couponCode);
+
       const createdBooking = await Booking.create({
         bookingId: newBookingId(),
         user: user._id,
@@ -186,9 +191,17 @@ const createBooking = async (user, input) => {
           baseRatePerHour: priced.baseRatePerHour,
           effectiveRatePerHour: priced.effectiveRatePerHour,
           multipliers: priced.multipliers,
-          amount: priced.amount,
+          amount: discounted.amount,
           currency: priced.currency,
           breakdown: priced.breakdown,
+          coupon: discounted.coupon
+            ? {
+                code: discounted.coupon.code,
+                discountPercent: discounted.coupon.discountPercent,
+                discountAmount: discounted.discountAmount,
+                originalAmount: discounted.originalAmount,
+              }
+            : undefined,
         },
         status: BOOKING_STATUS.PENDING_PAYMENT,
       });
@@ -203,6 +216,24 @@ const createBooking = async (user, input) => {
   );
 
   await cache.invalidateLot(lot._id.toString());
+
+  // A fully-discounted booking has nothing to charge, so it is settled here and
+  // confirmed straight away rather than being sent to a gateway for zero rupees.
+  if (booking.pricing.amount <= 0) {
+    const transaction = await paymentService.settleWithoutGateway({ user, booking, lot });
+    await confirmBookingPaid(booking, { transaction });
+
+    return {
+      booking: toBookingDto(booking, { lot }),
+      payment: {
+        settled: true,
+        transactionId: transaction.transactionId,
+        amountRupees: 0,
+        currency: booking.pricing.currency,
+        coupon: booking.pricing.coupon ? booking.pricing.coupon.code : undefined,
+      },
+    };
+  }
 
   // Payment order is created outside the lock - it is a network call and must
   // not hold up other drivers checking availability.
@@ -392,6 +423,21 @@ const findActiveSessionByPlate = async ({ lotId, normalizedPlate }) =>
     status: { $in: [SESSION_STATUS.ACTIVE, SESSION_STATUS.PENDING_PAYMENT] },
   }).sort({ actualEntryTime: -1 });
 
+/**
+ * The session this vehicle just left on, if it left moments ago.
+ *
+ * An exit camera fires twice on one departure as often as an entry camera does.
+ * Without this, the second read finds no open session and looks like a vehicle
+ * leaving that never arrived - which is a fraud signal, not a double scan.
+ */
+const findRecentlyClosedSessionByPlate = async ({ lotId, normalizedPlate, withinMinutes = 10 }) =>
+  ParkingSession.findOne({
+    parkingLot: lotId,
+    vehicleNumberNormalized: normalizedPlate,
+    status: SESSION_STATUS.CLOSED,
+    actualExitTime: { $gte: new Date(Date.now() - withinMinutes * 60 * 1000) },
+  }).sort({ actualExitTime: -1 });
+
 module.exports = {
   createBooking,
   confirmBookingPaid,
@@ -404,6 +450,7 @@ module.exports = {
   findCandidateBookings,
   findAnyOpenBooking,
   findActiveSessionByPlate,
+  findRecentlyClosedSessionByPlate,
   releaseStaleHolds,
   assertBookableWindow,
   toBookingDto,

@@ -71,8 +71,16 @@ userSchema.methods.verifyPassword = function verifyPassword(plainPassword) {
   return bcrypt.compare(plainPassword, this.passwordHash);
 };
 
-/** Fields a driver is expected to fill in before their profile counts as done. */
-const REQUIRED_PROFILE_FIELDS = ['firstName', 'lastName', 'phone', 'drivingLicenseNumber', 'avatarUrl'];
+/**
+ * Fields each role is expected to fill in before their profile counts as done.
+ * A licence number is meaningless for an owner or an admin, so asking for it
+ * would leave them permanently "incomplete".
+ */
+const REQUIRED_PROFILE_FIELDS = {
+  [ROLES.USER]: ['firstName', 'lastName', 'phone', 'drivingLicenseNumber', 'avatarUrl'],
+  [ROLES.OWNER]: ['firstName', 'lastName', 'phone', 'avatarUrl'],
+  [ROLES.ADMIN]: ['firstName', 'lastName'],
+};
 
 userSchema.methods.toPublic = function toPublic() {
   // Older accounts predate the split fields, so derive them for display.
@@ -80,7 +88,8 @@ userSchema.methods.toPublic = function toPublic() {
   const firstName = this.firstName || derived.firstName;
   const lastName = this.lastName || derived.lastName;
 
-  const missingProfileFields = REQUIRED_PROFILE_FIELDS.filter((field) => {
+  const required = REQUIRED_PROFILE_FIELDS[this.role] || REQUIRED_PROFILE_FIELDS[ROLES.USER];
+  const missingProfileFields = required.filter((field) => {
     if (field === 'firstName') return !firstName;
     if (field === 'lastName') return !lastName;
     return !this[field];

@@ -79,8 +79,9 @@ router.get(
     url.searchParams.set('format', 'jsonv2');
     url.searchParams.set('lat', String(latitude));
     url.searchParams.set('lon', String(longitude));
-    // Neighbourhood level: precise enough to be useful, vague enough to be short.
-    url.searchParams.set('zoom', '14');
+    // Street level: the facility form wants a road and house number. buildLabel
+    // still reduces it to a short locality line for the search box.
+    url.searchParams.set('zoom', '18');
     url.searchParams.set('addressdetails', '1');
 
     let payload;
@@ -97,11 +98,22 @@ router.get(
       throw new ApiError(502, 'Could not resolve that location right now');
     }
 
+    const address = payload.address || {};
+    // A street-level line for forms that ask for one, without the country and
+    // postcode tail that display_name carries.
+    const streetParts = [
+      address.house_number,
+      address.road || address.pedestrian || address.residential,
+      address.suburb || address.neighbourhood || address.village,
+    ].filter(Boolean);
+
     const result = {
       label: buildLabel(payload),
-      city: payload.address?.city || payload.address?.town || payload.address?.county || null,
-      state: payload.address?.state || null,
-      country: payload.address?.country || null,
+      address: streetParts.length > 0 ? streetParts.join(', ') : payload.display_name || null,
+      city: address.city || address.town || address.county || address.state_district || null,
+      state: address.state || null,
+      pincode: address.postcode || null,
+      country: address.country || null,
     };
 
     if (result.label) await cache.set(key, result, CACHE_TTL_SECONDS);

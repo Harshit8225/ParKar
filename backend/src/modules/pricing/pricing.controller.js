@@ -6,13 +6,14 @@ const ApiError = require('../../utils/ApiError');
 const asyncHandler = require('../../utils/asyncHandler');
 const { ok } = require('../../utils/response');
 const cache = require('../../services/cache.service');
+const coupons = require('../../services/coupon.service');
 const { loadManagedLot } = require('../parking/parking.service');
 const { DEFAULT_PRICING_RULE, ZONE_PRESETS } = require('./pricing.defaults');
 const service = require('./pricing.service');
 
 /** Price a prospective booking. Drivers call this before paying. */
 const quote = asyncHandler(async (req, res) => {
-  const { parkingLotId, vehicleType, expectedEntryTime, expectedExitTime } = req.body;
+  const { parkingLotId, vehicleType, expectedEntryTime, expectedExitTime, couponCode } = req.body;
 
   const lot = await ParkingLot.findById(parkingLotId);
   if (!lot) throw ApiError.notFound('Parking facility not found');
@@ -20,8 +21,17 @@ const quote = asyncHandler(async (req, res) => {
 
   const priced = await service.quote({ lot, vehicleType, entryTime: expectedEntryTime, exitTime: expectedExitTime });
 
+  // The discount is computed here, from the server's own figure. The quote is
+  // only a preview - createBooking re-applies it rather than trusting this.
+  const discounted = coupons.price(priced.amount, couponCode);
+
   return ok(res, {
     ...priced,
+    amount: discounted.amount,
+    originalAmount: discounted.originalAmount,
+    discountAmount: discounted.discountAmount,
+    coupon: discounted.coupon,
+    couponsAvailable: coupons.isEnabled(),
     parkingLotId: lot._id.toString(),
     parkingLotName: lot.name,
     availableSlots: lot.availableFor(vehicleType),

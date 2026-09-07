@@ -10,6 +10,7 @@ const quoteSchema = z
     vehicleType: v.vehicleType,
     expectedEntryTime: v.isoDate,
     expectedExitTime: v.isoDate,
+    couponCode: z.string().trim().max(32).optional(),
   })
   .refine((value) => value.expectedExitTime > value.expectedEntryTime, {
     path: ['expectedExitTime'],

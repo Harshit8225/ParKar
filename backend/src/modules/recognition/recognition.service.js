@@ -399,6 +399,45 @@ const processExit = async ({ lotId, imageBuffer, mimeType, manualPlate, cameraId
     const session = await bookingService.findActiveSessionByPlate({ lotId: lot._id, normalizedPlate: plate });
 
     if (!session) {
+      // Before treating this as a vehicle leaving that never arrived, check
+      // whether it simply left a moment ago: an exit camera double-fires just
+      // as readily as an entry one, and the attendant may re-scan too. Repeat
+      // the original outcome rather than raising a fraud flag over it.
+      const justLeft = await bookingService.findRecentlyClosedSessionByPlate({
+        lotId: lot._id,
+        normalizedPlate: plate,
+      });
+
+      if (justLeft) {
+        const bill = justLeft.billing || {};
+        const event = await logEvent({
+          ...baseEvent,
+          booking: justLeft.booking,
+          parkingSession: justLeft._id,
+          result: RECOGNITION_RESULT.DUPLICATE,
+          allowed: true,
+          message: `Duplicate exit event for session ${justLeft.sessionId}`,
+        });
+
+        return {
+          allowed: true,
+          result: RECOGNITION_RESULT.DUPLICATE,
+          message:
+            bill.amountDue > 0
+              ? `This vehicle has already exited. ${bill.amountDue} ${bill.currency || 'INR'} remains due on session ${justLeft.sessionId}.`
+              : `This vehicle has already exited. Session ${justLeft.sessionId} is complete with nothing further to pay.`,
+          recognition: { plate, confidence: recognition.confidence },
+          session: {
+            sessionId: justLeft.sessionId,
+            actualEntryTime: justLeft.actualEntryTime,
+            actualExitTime: justLeft.actualExitTime,
+            status: justLeft.status,
+          },
+          bill: justLeft.billing,
+          eventId: event?._id,
+        };
+      }
+
       const event = await logEvent({
         ...baseEvent,
         result: RECOGNITION_RESULT.NO_SESSION,

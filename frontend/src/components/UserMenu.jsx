@@ -18,7 +18,7 @@ const MENU = {
     { to: '/app/payments', label: 'Payments', icon: 'card' },
   ],
   owner: [
-    { to: '/owner/profile', label: 'Business Profile', icon: 'user' },
+    { to: '/owner/profile', label: 'Profile', icon: 'user' },
     { to: '/owner', label: 'Dashboard', icon: 'chart' },
     { to: '/owner/lots', label: 'My Facilities', icon: 'calendar' },
   ],

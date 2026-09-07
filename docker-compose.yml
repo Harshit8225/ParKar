@@ -64,6 +64,8 @@ services:
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      TEST_COUPONS: ${TEST_COUPONS:-}
+      ALLOW_TEST_COUPONS: ${ALLOW_TEST_COUPONS:-}
       CAMERA_API_KEY: ${CAMERA_API_KEY:?set CAMERA_API_KEY in .env}
     # Not published: Nginx is the only way in.
     expose:
