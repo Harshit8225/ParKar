@@ -5,12 +5,15 @@ import { subscribeToSessionExpiry, tokenStore } from '../api/client';
 const AuthContext = createContext(null);
 
 /**
- * Where each role lands after signing in. Drivers go to the home page, where
- * they can book straight away; their dashboard is one click away in the avatar
- * menu. Owners and admins go to their panels, which have no marketing page.
+ * Where each role lands after signing in.
+ *
+ * Every role goes to "/", which dispatches to that role's own home page - a
+ * driver must never be shown an approvals queue, and an owner must never be
+ * shown a booking form. Each panel dashboard is a separate page reached from
+ * there or from the avatar menu.
  */
 export const homeRouteFor = (role) =>
-  ({ user: '/', owner: '/owner', admin: '/admin' })[role] || '/login';
+  ({ user: '/', owner: '/', admin: '/' })[role] || '/login';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

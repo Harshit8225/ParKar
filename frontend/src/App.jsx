@@ -4,6 +4,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, homeRouteFor, useAuth } from './context/AuthContext';
 
 import Landing from './pages/Landing';
+import OwnerLanding from './pages/owner/OwnerLanding';
+import AdminLanding from './pages/admin/AdminLanding';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -28,6 +30,33 @@ import AdminTransactions from './pages/admin/Transactions';
 import AdminActivity from './pages/admin/Activity';
 import AdminFraud from './pages/admin/Fraud';
 
+/**
+ * "/" is the home page for everyone, but it is a different page per role: a
+ * driver books from theirs, an owner reads about running a facility, an admin
+ * about moderating the platform. Guests get the public marketing page.
+ */
+const RoleHome = () => {
+  const { loading, role } = useAuth();
+
+  // Wait for /auth/me so a signed-in owner never flashes the driver page.
+  if (loading) return null;
+  if (role === 'owner') {
+    return (
+      <Layout>
+        <OwnerLanding />
+      </Layout>
+    );
+  }
+  if (role === 'admin') {
+    return (
+      <Layout>
+        <AdminLanding />
+      </Layout>
+    );
+  }
+  return <Landing />;
+};
+
 const NotFound = () => {
   const { isAuthenticated, role } = useAuth();
   return (
@@ -48,8 +77,8 @@ const App = () => (
   <BrowserRouter>
     <AuthProvider>
       <Routes>
-        {/* Public landing page: the same page for visitors and signed-in drivers. */}
-        <Route path="/" element={<Landing />} />
+        {/* Home: dispatches to the landing page for whoever is signed in. */}
+        <Route path="/" element={<RoleHome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
