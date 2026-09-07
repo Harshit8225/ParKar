@@ -88,7 +88,7 @@ export const useCheckout = () => {
           key: payment.keyId,
           amount: payment.amount,
           currency: payment.currency,
-          name: payment.name || 'Smart Parking',
+          name: payment.name || 'ParKar',
           description: payment.description,
           order_id: payment.orderId,
           prefill: payment.prefill || {},

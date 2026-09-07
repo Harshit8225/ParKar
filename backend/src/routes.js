@@ -52,7 +52,7 @@ router.get('/health', (_req, res) => {
 router.get('/', (_req, res) => {
   res.json({
     success: true,
-    name: 'Smart Parking Management System API',
+    name: 'ParKar Management System API',
     version: '1.0.0',
     architecture: 'modular monolith',
     modules: modules.map((module) => `${env.apiPrefix}${module.path}`),

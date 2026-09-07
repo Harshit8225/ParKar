@@ -1,12 +1,14 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, homeRouteFor, useAuth } from './context/AuthContext';
 
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
 import UserDashboard from './pages/user/Dashboard';
+import UserProfile from './pages/user/Profile';
 import SearchParking from './pages/user/SearchParking';
 import LotDetail from './pages/user/LotDetail';
 import MyBookings from './pages/user/MyBookings';
@@ -27,13 +29,6 @@ import AdminTransactions from './pages/admin/Transactions';
 import AdminActivity from './pages/admin/Activity';
 import AdminFraud from './pages/admin/Fraud';
 
-/** Send an already-signed-in visitor to their own panel; everyone else logs in. */
-const RootRedirect = () => {
-  const { isAuthenticated, role, loading } = useAuth();
-  if (loading) return null;
-  return <Navigate to={isAuthenticated ? homeRouteFor(role) : '/login'} replace />;
-};
-
 const NotFound = () => {
   const { isAuthenticated, role } = useAuth();
   return (
@@ -41,7 +36,7 @@ const NotFound = () => {
       <p className="text-5xl font-bold text-brand-600">404</p>
       <h1 className="text-lg font-semibold text-ink-900">This page does not exist</h1>
       <a
-        href={isAuthenticated ? homeRouteFor(role) : '/login'}
+        href={isAuthenticated ? homeRouteFor(role) : '/'}
         className="mt-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
       >
         Go back
@@ -54,7 +49,8 @@ const App = () => (
   <BrowserRouter>
     <AuthProvider>
       <Routes>
-        <Route path="/" element={<RootRedirect />} />
+        {/* Public landing page: the same page for visitors and signed-in drivers. */}
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
@@ -73,6 +69,7 @@ const App = () => (
           <Route path="bookings" element={<MyBookings />} />
           <Route path="bookings/:id" element={<BookingDetail />} />
           <Route path="payments" element={<Payments />} />
+          <Route path="profile" element={<UserProfile />} />
         </Route>
 
         {/* ---- Parking owner panel ---- */}

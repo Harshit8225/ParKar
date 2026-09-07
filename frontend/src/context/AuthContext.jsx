@@ -4,9 +4,13 @@ import { subscribeToSessionExpiry, tokenStore } from '../api/client';
 
 const AuthContext = createContext(null);
 
-/** Where each role lands after signing in. */
+/**
+ * Where each role lands after signing in. Drivers go to the home page, where
+ * they can book straight away; their dashboard is one click away in the avatar
+ * menu. Owners and admins go to their panels, which have no marketing page.
+ */
 export const homeRouteFor = (role) =>
-  ({ user: '/app', owner: '/owner', admin: '/admin' })[role] || '/login';
+  ({ user: '/', owner: '/owner', admin: '/admin' })[role] || '/login';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

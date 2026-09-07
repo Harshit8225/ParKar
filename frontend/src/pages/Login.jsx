@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { errorMessage } from '../api/client';
+import Brand from '../components/Brand';
 import { Alert, Button, Field, Input } from '../components/ui';
 import { homeRouteFor, useAuth } from '../context/AuthContext';
 
@@ -43,11 +44,10 @@ const Login = () => {
     <div className="flex min-h-full items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <span aria-hidden="true" className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-brand-600 text-lg font-bold text-white">
-            P
-          </span>
-          <h1 className="mt-3 text-2xl font-semibold text-ink-900">Smart Parking</h1>
-          <p className="mt-1 text-sm text-ink-500">Sign in to book parking or manage your facilities.</p>
+          <Link to="/" className="inline-flex" aria-label="ParKar home">
+            <Brand size="lg" className="justify-center" />
+          </Link>
+          <p className="mt-3 text-sm text-ink-500">Sign in to book parking or manage your facilities.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">

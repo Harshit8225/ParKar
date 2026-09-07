@@ -17,7 +17,7 @@ const start = async () => {
   const app = createApp();
 
   server = app.listen(env.port, () => {
-    logger.info(`Smart Parking API listening on port ${env.port} (${env.nodeEnv})`);
+    logger.info(`ParKar API listening on port ${env.port} (${env.nodeEnv})`);
     logger.info(`API base: http://localhost:${env.port}${env.apiPrefix}`);
   });
 

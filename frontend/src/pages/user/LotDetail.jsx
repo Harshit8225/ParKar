@@ -15,6 +15,28 @@ const defaultEntryTime = () => {
   return now;
 };
 
+/**
+ * The landing-page and search forms pass the window the driver asked for as
+ * "entry" (a datetime-local value) and "duration" (whole hours). Anything
+ * missing or in the past falls back to the default.
+ */
+const entryFromParams = (raw) => {
+  if (!raw) return toLocalInputValue(defaultEntryTime());
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime()) || parsed < new Date()) return toLocalInputValue(defaultEntryTime());
+  return toLocalInputValue(parsed);
+};
+
+const durationFromParams = (raw) => {
+  const hours = Number(raw);
+  if (!Number.isFinite(hours)) return 2;
+  // Snap to an offered option so the select always has a matching value.
+  return DURATIONS.reduce(
+    (best, option) => (Math.abs(option - hours) < Math.abs(best - hours) ? option : best),
+    DURATIONS[0],
+  );
+};
+
 const LotDetail = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -28,8 +50,8 @@ const LotDetail = () => {
   const [form, setForm] = useState({
     vehicleType: searchParams.get('vehicleType') || 'four_wheeler',
     vehicleNumber: '',
-    entryTime: toLocalInputValue(defaultEntryTime()),
-    durationHours: 2,
+    entryTime: entryFromParams(searchParams.get('entry')),
+    durationHours: durationFromParams(searchParams.get('duration')),
   });
 
   const [quote, setQuote] = useState(null);

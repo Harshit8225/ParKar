@@ -12,6 +12,15 @@
   --color-brand-800: #1c2dab;
   --color-brand-900: #1d2c87;
 
+  /* Accent: the warm half of the ParKar wordmark, used for highlights on dark. */
+  --color-accent-50: #fff7ed;
+  --color-accent-100: #ffedd5;
+  --color-accent-300: #fdba74;
+  --color-accent-400: #fb923c;
+  --color-accent-500: #f97316;
+  --color-accent-600: #ea580c;
+  --color-accent-700: #c2410c;
+
   --color-ink-500: #64748b;
   --color-ink-700: #334155;
   --color-ink-900: #0f172a;
@@ -59,4 +68,39 @@ input[type='number'] {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ---- Landing hero: neon accents layered over the deck photograph. ---- */
+
+/* Light bars sweeping along the ceiling of the deck. */
+@keyframes parkar-sweep {
+  0% {
+    transform: translateX(-12%);
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translateX(12%);
+    opacity: 0.35;
+  }
+}
+
+/* Slow pulse on the neon lane strips so the floor feels lit rather than painted. */
+@keyframes parkar-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.parkar-sweep {
+  animation: parkar-sweep 9s ease-in-out infinite alternate;
+}
+.parkar-pulse {
+  animation: parkar-pulse 4s ease-in-out infinite;
 }

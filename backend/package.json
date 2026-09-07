@@ -2,7 +2,7 @@
   "name": "smart-parking-backend",
   "version": "1.0.0",
   "private": true,
-  "description": "Smart Parking Management System - modular monolithic backend",
+  "description": "ParKar - modular monolithic backend for smart parking management",
   "type": "commonjs",
   "main": "src/server.js",
   "scripts": {

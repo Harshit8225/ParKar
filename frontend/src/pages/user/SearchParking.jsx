@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { errorMessage } from '../../api/client';
 import { parkingApi } from '../../api/endpoints';
 import { Alert, Badge, Button, Card, Checkbox, EmptyState, Field, Input, Pagination, Select, Spinner } from '../../components/ui';
@@ -9,8 +9,11 @@ import { money, percent } from '../../utils/format';
 const FALLBACK_LOCATION = { latitude: 12.9757, longitude: 77.6068, label: 'Bengaluru (city centre)' };
 
 const SearchParking = () => {
+  // The landing-page booking widget arrives here with what the driver asked for.
+  const [searchParams] = useSearchParams();
+
   const [filters, setFilters] = useState({
-    vehicleType: 'four_wheeler',
+    vehicleType: searchParams.get('vehicleType') === 'two_wheeler' ? 'two_wheeler' : 'four_wheeler',
     radiusKm: 10,
     sortBy: 'distance',
     evCharging: false,
@@ -18,7 +21,7 @@ const SearchParking = () => {
     availableOnly: true,
     minRating: '',
     maxRate: '',
-    q: '',
+    q: searchParams.get('q') || '',
   });
   const [coords, setCoords] = useState(null);
   const [locationLabel, setLocationLabel] = useState('');
@@ -28,6 +31,20 @@ const SearchParking = () => {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [widened, setWidened] = useState(false);
+
+  /**
+   * The requested parking window travels with every "view and book" link, so the
+   * booking form on the facility page opens already filled in.
+   */
+  const bookingWindow = useMemo(() => {
+    const entry = searchParams.get('entry');
+    const duration = Number(searchParams.get('duration'));
+    const query = new URLSearchParams();
+    if (entry) query.set('entry', entry);
+    if (Number.isFinite(duration) && duration >= 1) query.set('duration', String(Math.min(24, Math.round(duration))));
+    return query.toString();
+  }, [searchParams]);
 
   // Ask for the browser location once; fall back to the city centre if refused.
   useEffect(() => {
@@ -56,6 +73,7 @@ const SearchParking = () => {
     if (!coords) return;
     setLoading(true);
     setError('');
+    setWidened(false);
     try {
       const params = {
         latitude: coords.latitude,
@@ -74,7 +92,20 @@ const SearchParking = () => {
       if (filters.maxRate) params.maxRate = filters.maxRate;
       if (filters.q.trim().length >= 2) params.q = filters.q.trim();
 
-      const { items, pagination: meta } = await parkingApi.search(params);
+      let { items, pagination: meta } = await parkingApi.search(params);
+
+      // A typed location may sit outside the search radius - e.g. the driver is in
+      // Bengaluru but typed "Mumbai". Retry without coordinates so the text wins.
+      if (items.length === 0 && params.q) {
+        const { latitude, longitude, radiusKm, ...textOnly } = params;
+        const widerSearch = await parkingApi.search(textOnly);
+        if (widerSearch.items.length > 0) {
+          items = widerSearch.items;
+          meta = widerSearch.pagination;
+          setWidened(true);
+        }
+      }
+
       setResults(items);
       setPagination(meta);
       setPage(targetPage);
@@ -160,6 +191,13 @@ const SearchParking = () => {
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
 
+      {widened && (
+        <Alert kind="info">
+          Nothing matched &quot;{filters.q}&quot; within {filters.radiusKm} km of you, so these are all matching
+          facilities regardless of distance.
+        </Alert>
+      )}
+
       {loading ? (
         <Spinner label="Searching for parking..." />
       ) : results.length === 0 ? (
@@ -244,7 +282,9 @@ const SearchParking = () => {
 
                   <div className="border-t border-slate-100 p-4">
                     <Link
-                      to={`/app/parking/${lot.id}?vehicleType=${filters.vehicleType}`}
+                      to={`/app/parking/${lot.id}?vehicleType=${filters.vehicleType}${
+                        bookingWindow ? `&${bookingWindow}` : ''
+                      }`}
                       className={`block rounded-lg px-4 py-2 text-center text-sm font-medium transition ${
                         available > 0
                           ? 'bg-brand-600 text-white hover:bg-brand-700'

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { errorMessage } from '../api/client';
+import Brand from '../components/Brand';
 import { Alert, Button, Field, Input } from '../components/ui';
 import { homeRouteFor, useAuth } from '../context/AuthContext';
 
@@ -61,7 +62,10 @@ const Register = () => {
     <div className="flex min-h-full items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-semibold text-ink-900">Create your account</h1>
+          <Link to="/" className="inline-flex" aria-label="ParKar home">
+            <Brand size="md" className="justify-center" />
+          </Link>
+          <h1 className="mt-3 text-2xl font-semibold text-ink-900">Create your account</h1>
           <p className="mt-1 text-sm text-ink-500">Drivers book parking; owners list facilities.</p>
         </div>
 
