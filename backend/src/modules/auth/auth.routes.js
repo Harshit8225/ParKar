@@ -15,6 +15,10 @@ router.post('/refresh', authLimiter, validate({ body: schemas.refreshSchema }), 
 
 router.get('/me', authenticate, controller.me);
 router.patch('/me', authenticate, validate({ body: schemas.updateProfileSchema }), controller.updateProfile);
+// Signed upload ticket, then the resulting URL saved back on the account.
+router.get('/me/avatar-signature', authenticate, controller.avatarSignature);
+router.put('/me/avatar', authenticate, validate({ body: schemas.avatarSchema }), controller.updateAvatar);
+
 router.post(
   '/change-password',
   authenticate,

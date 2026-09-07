@@ -6,6 +6,7 @@ const { isRedisAvailable } = require('./config/redis');
 const env = require('./config/env');
 const gemini = require('./services/gemini.service');
 const razorpay = require('./services/razorpay.service');
+const cloudinary = require('./services/cloudinary.service');
 
 /**
  * Module router table. Every entry is a logical module of the monolith - they
@@ -45,6 +46,7 @@ router.get('/health', (_req, res) => {
       redis: isRedisAvailable() ? 'connected' : 'unavailable',
       gemini: gemini.isConfigured() ? 'configured' : 'not_configured',
       razorpay: razorpay.isConfigured() ? 'configured' : 'mock_mode',
+      cloudinary: cloudinary.isConfigured() ? 'configured' : 'not_configured',
     },
   });
 });

@@ -15,6 +15,34 @@ export const authApi = {
   me: () => client.get('/auth/me').then(unwrap),
   updateProfile: (payload) => client.patch('/auth/me', payload).then(unwrap),
   changePassword: (payload) => client.post('/auth/change-password', payload).then(unwrap),
+
+  /** Ticket for a direct browser-to-Cloudinary upload. */
+  avatarSignature: () => client.get('/auth/me/avatar-signature').then(unwrap),
+  saveAvatar: (avatarUrl) => client.put('/auth/me/avatar', { avatarUrl }).then(unwrap),
+};
+
+/**
+ * Upload a picture straight to Cloudinary using a server-issued signature, then
+ * hand the resulting URL back to our API. The file never touches our server and
+ * the API secret never reaches the browser.
+ */
+export const uploadAvatar = async (file) => {
+  const ticket = await authApi.avatarSignature();
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('api_key', ticket.apiKey);
+  form.append('signature', ticket.signature);
+  Object.entries(ticket.params).forEach(([key, value]) => form.append(key, String(value)));
+
+  const response = await fetch(ticket.uploadUrl, { method: 'POST', body: form });
+  const result = await response.json();
+  if (!response.ok || !result.secure_url) {
+    throw new Error(result.error?.message || 'The image could not be uploaded.');
+  }
+
+  // Our API re-checks the URL belongs to our Cloudinary account before saving.
+  return authApi.saveAvatar(result.secure_url);
 };
 
 export const parkingApi = {

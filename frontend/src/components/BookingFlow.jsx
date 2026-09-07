@@ -61,7 +61,6 @@ const FacilityPanel = ({
   route,
   routing,
   routeError,
-  onGetDirections,
   onBack,
 }) => {
   const navigate = useNavigate();
@@ -178,12 +177,22 @@ const FacilityPanel = ({
         ))}
       </div>
 
-      {/* ---- How far, and how to get there ---- */}
+      {/* ---- How far, and how to get there. The route is already drawn: it is
+              fetched the moment this facility is picked, not on request. ---- */}
       <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            {route ? (
-              <p className="text-sm font-semibold text-ink-900">
+            {routing ? (
+              <p className="inline-flex items-center gap-2 text-sm font-medium text-ink-500">
+                <span
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+                />
+                Drawing your route...
+              </p>
+            ) : route ? (
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-ink-900">
+                <Icon name="route" className="h-4 w-4 text-brand-600" />
                 {formatKm(route.distanceKm)} by road &middot; about {formatDuration(route.durationSeconds)} driving
               </p>
             ) : straightLine ? (
@@ -192,40 +201,19 @@ const FacilityPanel = ({
               <p className="text-sm font-medium text-ink-500">Share your location to see how far this is.</p>
             )}
             <p className="mt-0.5 text-xs text-ink-500">
-              {route
-                ? 'The blue line on the map is this route.'
-                : 'Get directions to draw the driving route on the map.'}
+              {route ? 'The blue line on the map is this route.' : 'Your route appears on the map above.'}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={onGetDirections}
-              disabled={!userLocation || routing}
-              className="inline-flex items-center gap-2 rounded-lg bg-ink-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-            >
-              {routing ? (
-                <span
-                  aria-hidden="true"
-                  className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-                />
-              ) : (
-                <Icon name="route" />
-              )}
-              {routing ? 'Finding route' : route ? 'Route shown' : 'Get directions'}
-            </button>
-
-            <a
-              href={googleDirectionsUrl(userLocation, lot.location)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold text-ink-700 ring-1 ring-slate-300 transition hover:bg-white"
-            >
-              Google Maps
-              <Icon name="external" className="h-3.5 w-3.5" />
-            </a>
-          </div>
+          <a
+            href={googleDirectionsUrl(userLocation, lot.location)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold text-ink-700 ring-1 ring-slate-300 transition hover:bg-white"
+          >
+            Navigate in Google Maps
+            <Icon name="external" className="h-3.5 w-3.5" />
+          </a>
         </div>
 
         {routeError && <p className="mt-2.5 text-xs font-medium text-amber-700">{routeError}</p>}
@@ -398,12 +386,38 @@ const BookingFlow = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canSearch]);
 
-  // A different facility means the drawn route no longer applies.
+  /**
+   * Picking a facility draws the route to it straight away - the driver should
+   * not have to ask twice. Re-runs when the selection changes, and also once
+   * the position arrives if it was still pending on the first click.
+   */
   useEffect(() => {
+    routeRequest.current?.abort();
     setRoute(null);
     setRouteError('');
-    routeRequest.current?.abort();
-  }, [selected?.id]);
+
+    if (!selected || !userLocation) return undefined;
+
+    const controller = new AbortController();
+    routeRequest.current = controller;
+    setRouting(true);
+
+    fetchDrivingRoute(userLocation, selected.location, { signal: controller.signal })
+      .then((result) => {
+        if (!controller.signal.aborted) setRoute(result);
+      })
+      .catch((err) => {
+        if (controller.signal.aborted || err.name === 'AbortError') return;
+        // OSRM is a free courtesy service, so failing here has to be survivable:
+        // the straight-line distance and the Google Maps hand-off both remain.
+        setRouteError(`${err.message} You can still open the route in Google Maps.`);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setRouting(false);
+      });
+
+    return () => controller.abort();
+  }, [selected?.id, userLocation]);
 
   const update = (field) => (event) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -520,36 +534,6 @@ const BookingFlow = () => {
     }
   };
 
-  /** Draw the driving route from the driver to the selected facility. */
-  const getDirections = async () => {
-    if (!selected) return;
-
-    let from = userLocation;
-    if (!from) {
-      try {
-        from = await requestPosition();
-      } catch {
-        setRouteError('Share your location to get directions, or open the route in Google Maps.');
-        return;
-      }
-    }
-
-    routeRequest.current?.abort();
-    const controller = new AbortController();
-    routeRequest.current = controller;
-
-    setRouting(true);
-    setRouteError('');
-    try {
-      setRoute(await fetchDrivingRoute(from, selected.location, { signal: controller.signal }));
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      // OSRM is a free courtesy service, so failing here has to be survivable.
-      setRouteError(`${err.message} You can still open the route in Google Maps.`);
-    } finally {
-      setRouting(false);
-    }
-  };
 
   return (
     <div className="overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-[0_24px_70px_-20px_rgba(2,8,32,0.55)] ring-1 ring-black/5 backdrop-blur-xl">
@@ -706,7 +690,6 @@ const BookingFlow = () => {
                     route={route}
                     routing={routing}
                     routeError={routeError}
-                    onGetDirections={getDirections}
                     onBack={() => setSelected(null)}
                   />
                 </div>

@@ -3,12 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * Avatar in the top-right corner that opens the account menu. The User model
- * carries no photo, so the avatar is the driver's initials over a brand tile -
- * swap the <img> in when an avatarUrl lands on the profile.
+ * Avatar in the top-right corner that opens the account menu. Shows the picture
+ * from the profile, falling back to initials on a brand tile until one is set.
  */
-
-const ROLE_LABEL = { user: 'Driver', owner: 'Parking Owner', admin: 'Platform Admin' };
 
 /** Menu rows per role. The driver set is the one in the marketing design. */
 const MENU = {
@@ -45,6 +42,10 @@ const MenuIcon = ({ name }) => (
     <path d={ICONS[name]} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+/** Just the given name - the menu is for the person, not their job title. */
+const firstNameOf = (user) =>
+  user.firstName || String(user.name || '').trim().split(/\s+/)[0] || 'Account';
 
 const initialsOf = (name) =>
   String(name || '?')
@@ -97,17 +98,34 @@ const UserMenu = ({ tone = 'dark' }) => {
         onClick={() => setOpen((isOpen) => !isOpen)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`flex items-center gap-1.5 rounded-full p-0.5 transition ${
+        className={`relative flex items-center gap-1.5 rounded-full p-0.5 transition ${
           onLight ? 'hover:bg-white/15' : 'hover:bg-slate-100'
         }`}
       >
         <span className="sr-only">Account menu</span>
-        <span
-          aria-hidden="true"
-          className="grid h-9 w-9 place-items-center rounded-full bg-brand-600 text-sm font-semibold text-white ring-2 ring-white/70"
-        >
-          {initialsOf(user.name)}
-        </span>
+        {/* An unfinished profile is worth noticing without being nagged about. */}
+        {user.profileComplete === false && (
+          <span
+            aria-hidden="true"
+            title="Your profile is incomplete"
+            className="absolute -right-0.5 -top-0.5 z-10 h-3 w-3 rounded-full bg-amber-400 ring-2 ring-white"
+          />
+        )}
+        {user.avatarUrl ? (
+          <img
+            src={user.avatarUrl}
+            alt=""
+            aria-hidden="true"
+            className="h-9 w-9 rounded-full object-cover ring-2 ring-white/70"
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="grid h-9 w-9 place-items-center rounded-full bg-brand-600 text-sm font-semibold text-white ring-2 ring-white/70"
+          >
+            {initialsOf(user.name)}
+          </span>
+        )}
         <svg
           viewBox="0 0 24 24"
           aria-hidden="true"
@@ -125,8 +143,7 @@ const UserMenu = ({ tone = 'dark' }) => {
           className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl bg-ink-900 py-1.5 text-sm text-white shadow-2xl ring-1 ring-white/10"
         >
           <div className="border-b border-white/10 px-4 pb-2.5 pt-1.5">
-            <p className="truncate font-medium">{user.name}</p>
-            <p className="truncate text-xs text-white/60">{ROLE_LABEL[role] || user.email}</p>
+            <p className="truncate font-medium">{firstNameOf(user)}</p>
           </div>
 
           {items.map((item) => (

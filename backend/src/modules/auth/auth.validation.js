@@ -46,12 +46,38 @@ const changePasswordSchema = z.object({
   newPassword: password,
 });
 
+/**
+ * Indian driving licences are 15-16 characters: two letters for the state, two
+ * digits for the RTO, then the year and serial. Separators are stripped before
+ * this runs, so only letters and digits are checked.
+ */
+const drivingLicenseNumber = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .transform((value) => value.replace(/[\s-]/g, ''))
+  .refine((value) => /^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$/.test(value) || /^[A-Z]{2}[0-9]{11,13}$/.test(value), {
+    message: 'Enter a valid licence number, e.g. UP53 20220001234',
+  });
+
 const updateProfileSchema = z
   .object({
     name: z.string().trim().min(2).max(120).optional(),
+    firstName: z.string().trim().min(1, 'First name is required').max(60).optional(),
+    lastName: z.string().trim().min(1, 'Last name is required').max(60).optional(),
     phone,
+    drivingLicenseNumber: drivingLicenseNumber.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, { message: 'Nothing to update' });
+
+/** The browser sends back what Cloudinary returned; we re-check the origin. */
+const avatarSchema = z.object({
+  avatarUrl: z
+    .string()
+    .trim()
+    .url('Expected an image URL')
+    .max(500),
+});
 
 module.exports = {
   registerSchema,
@@ -59,4 +85,5 @@ module.exports = {
   refreshSchema,
   changePasswordSchema,
   updateProfileSchema,
+  avatarSchema,
 };

@@ -49,6 +49,16 @@ const env = {
     webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '',
   },
 
+  // Profile pictures. Uploads are signed here and sent straight from the
+  // browser to Cloudinary, so the secret never leaves the server and image
+  // bytes never pass through this API.
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+    apiKey: process.env.CLOUDINARY_API_KEY || '',
+    apiSecret: process.env.CLOUDINARY_API_SECRET || '',
+    avatarFolder: process.env.CLOUDINARY_AVATAR_FOLDER || 'parkar/avatars',
+  },
+
   platform: {
     commissionPercent: num(process.env.PLATFORM_COMMISSION_PERCENT, 10),
     currency: process.env.DEFAULT_CURRENCY || 'INR',

@@ -3,6 +3,7 @@
 const { User, ParkingOwner } = require('../../models');
 const { ROLES } = require('../../models/constants');
 const ApiError = require('../../utils/ApiError');
+const env = require('../../config/env');
 const { issueTokenPair, verifyRefreshToken } = require('./token.service');
 
 /**
@@ -76,9 +77,34 @@ const me = async (user) => {
   return result;
 };
 
+const PROFILE_FIELDS = ['name', 'firstName', 'lastName', 'phone', 'drivingLicenseNumber'];
+
 const updateProfile = async (user, updates) => {
-  if (updates.name !== undefined) user.name = updates.name;
-  if (updates.phone !== undefined) user.phone = updates.phone;
+  // The schema has already rejected anything not in this list; assigning field
+  // by field keeps role, email and password out of reach regardless.
+  for (const field of PROFILE_FIELDS) {
+    if (updates[field] !== undefined) user[field] = updates[field];
+  }
+  await user.save();
+  return user.toPublic();
+};
+
+/**
+ * Store the picture the browser just uploaded.
+ *
+ * The URL is checked against our own Cloudinary account before it is saved: the
+ * browser performs the upload, so without this a client could point the avatar
+ * at any address on the internet.
+ */
+const updateAvatar = async (user, avatarUrl) => {
+  const { cloudName } = env.cloudinary;
+  const expectedPrefix = `https://res.cloudinary.com/${cloudName}/`;
+
+  if (!cloudName || !avatarUrl.startsWith(expectedPrefix)) {
+    throw ApiError.badRequest('That image was not uploaded through ParKar');
+  }
+
+  user.avatarUrl = avatarUrl;
   await user.save();
   return user.toPublic();
 };
@@ -99,4 +125,4 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
   return { tokens: issueTokenPair(user) };
 };
 
-module.exports = { register, login, refresh, me, updateProfile, changePassword };
+module.exports = { register, login, refresh, me, updateProfile, updateAvatar, changePassword };
