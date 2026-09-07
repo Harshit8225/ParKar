@@ -20,12 +20,14 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        // Recharts is only used by the three dashboards, and it is by far the
-        // largest dependency. Splitting it keeps the initial load small and
-        // lets the browser cache each vendor group independently.
+        // Recharts is only used by the three dashboards, and Leaflet only once
+        // a driver has actually searched (ParkingMap is imported lazily), so
+        // neither belongs in the initial load. Splitting them also lets the
+        // browser cache each vendor group independently.
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
           charts: ['recharts'],
+          map: ['leaflet', 'react-leaflet'],
           http: ['axios'],
         },
       },

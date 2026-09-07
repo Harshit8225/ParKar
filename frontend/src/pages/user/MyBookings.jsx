@@ -1,11 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { errorMessage } from '../../api/client';
-import { bookingApi } from '../../api/endpoints';
+import { bookingApi, sessionApi } from '../../api/endpoints';
 import { Alert, Badge, Card, EmptyState, Field, Pagination, Select, Spinner, Table, Td } from '../../components/ui';
-import { dateTime, money, vehicleLabel } from '../../utils/format';
+import { dateTime, duration, money, vehicleLabel } from '../../utils/format';
 
-const STATUSES = [
+/**
+ * Everything that has happened to this driver's parking, in one place: the
+ * reservations they made, and the record of their vehicle actually entering and
+ * leaving. The dashboard links here rather than duplicating either list.
+ */
+
+const TABS = [
+  { key: 'bookings', label: 'Reservations' },
+  { key: 'sessions', label: 'Parking sessions' },
+];
+
+const BOOKING_STATUSES = [
   { value: '', label: 'All bookings' },
   { value: 'confirmed', label: 'Confirmed' },
   { value: 'active', label: 'Vehicle inside' },
@@ -14,7 +25,15 @@ const STATUSES = [
   { value: 'payment_failed', label: 'Payment failed' },
 ];
 
+const SESSION_STATUSES = [
+  { value: '', label: 'All sessions' },
+  { value: 'active', label: 'Vehicle inside' },
+  { value: 'closed', label: 'Closed' },
+  { value: 'pending_payment', label: 'Awaiting payment' },
+];
+
 const MyBookings = () => {
+  const [tab, setTab] = useState('bookings');
   const [status, setStatus] = useState('');
   const [data, setData] = useState({ items: [], pagination: null });
   const [loading, setLoading] = useState(true);
@@ -22,12 +41,14 @@ const MyBookings = () => {
 
   const load = async (page = 1) => {
     setLoading(true);
+    setError('');
     try {
       const params = { page, limit: 15 };
       if (status) params.status = status;
-      setData(await bookingApi.mine(params));
+      setData(await (tab === 'bookings' ? bookingApi.mine(params) : sessionApi.mine(params)));
     } catch (err) {
       setError(errorMessage(err));
+      setData({ items: [], pagination: null });
     } finally {
       setLoading(false);
     }
@@ -36,24 +57,56 @@ const MyBookings = () => {
   useEffect(() => {
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [tab, status]);
+
+  const switchTab = (key) => {
+    if (key === tab) return;
+    // The two lists have different status vocabularies, so clear the filter.
+    setStatus('');
+    setTab(key);
+  };
+
+  const statuses = tab === 'bookings' ? BOOKING_STATUSES : SESSION_STATUSES;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-ink-900">My bookings</h1>
-          <p className="text-sm text-ink-500">Every reservation you have made, newest first.</p>
+          <p className="text-sm text-ink-500">
+            {tab === 'bookings'
+              ? 'Every reservation you have made, newest first.'
+              : 'Every time your vehicle entered and left a facility.'}
+          </p>
         </div>
         <Field label="Filter" className="w-56">
           <Select value={status} onChange={(event) => setStatus(event.target.value)}>
-            {STATUSES.map((option) => (
+            {statuses.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
           </Select>
         </Field>
+      </div>
+
+      <div role="tablist" aria-label="History" className="flex gap-1 border-b border-slate-200">
+        {TABS.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === item.key}
+            onClick={() => switchTab(item.key)}
+            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition ${
+              tab === item.key
+                ? 'border-brand-600 text-brand-700'
+                : 'border-transparent text-ink-500 hover:border-slate-300 hover:text-ink-900'
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
@@ -63,49 +116,91 @@ const MyBookings = () => {
           <Spinner />
         ) : data.items.length === 0 ? (
           <EmptyState
-            title="No bookings found"
-            description={status ? 'Try clearing the filter.' : 'Book a parking slot and it will show up here.'}
+            title={tab === 'bookings' ? 'No bookings found' : 'No parking sessions yet'}
+            description={
+              status
+                ? 'Try clearing the filter.'
+                : tab === 'bookings'
+                  ? 'Book a parking slot and it will show up here.'
+                  : 'Your entry and exit record appears here once you have parked.'
+            }
             action={
-              <Link to="/app/search" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
-                Find parking
+              <Link to="/" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
+                Book parking
               </Link>
             }
           />
         ) : (
           <>
-            <Table headers={['Booking ID', 'Facility', 'Vehicle', 'Booked window', 'Amount', 'Status', '']}>
-              {data.items.map((booking) => (
-                <tr key={booking.id} className="hover:bg-slate-50">
-                  <Td className="font-mono text-xs">{booking.bookingId}</Td>
-                  <Td>
-                    <span className="block max-w-[16rem] truncate">{booking.parkingLot?.name || '-'}</span>
-                    <span className="block text-xs text-ink-500">{booking.parkingLot?.city}</span>
-                  </Td>
-                  <Td>
-                    <span className="block font-mono text-xs">{booking.vehicleNumber}</span>
-                    <span className="block text-xs text-ink-500">{vehicleLabel(booking.vehicleType)}</span>
-                  </Td>
-                  <Td>
-                    <span className="block text-xs">{dateTime(booking.expectedEntryTime)}</span>
-                    <span className="block text-xs text-ink-500">to {dateTime(booking.expectedExitTime)}</span>
-                  </Td>
-                  <Td>{money(booking.pricing?.amount)}</Td>
-                  <Td>
-                    <Badge status={booking.status} />
-                    {booking.fraudFlags?.length > 0 && (
-                      <span className="ml-1 text-xs text-rose-600" title="A plate mismatch was recorded for this booking">
-                        &#9888;
-                      </span>
-                    )}
-                  </Td>
-                  <Td>
-                    <Link to={`/app/bookings/${booking.bookingId}`} className="text-sm font-medium text-brand-700 hover:underline">
-                      Details
-                    </Link>
-                  </Td>
-                </tr>
-              ))}
-            </Table>
+            {tab === 'bookings' ? (
+              <Table headers={['Booking ID', 'Facility', 'Vehicle', 'Booked window', 'Amount', 'Status', '']}>
+                {data.items.map((booking) => (
+                  <tr key={booking.id} className="hover:bg-slate-50">
+                    <Td className="font-mono text-xs">{booking.bookingId}</Td>
+                    <Td>
+                      <span className="block max-w-[16rem] truncate">{booking.parkingLot?.name || '-'}</span>
+                      <span className="block text-xs text-ink-500">{booking.parkingLot?.city}</span>
+                    </Td>
+                    <Td>
+                      <span className="block font-mono text-xs">{booking.vehicleNumber}</span>
+                      <span className="block text-xs text-ink-500">{vehicleLabel(booking.vehicleType)}</span>
+                    </Td>
+                    <Td>
+                      <span className="block text-xs">{dateTime(booking.expectedEntryTime)}</span>
+                      <span className="block text-xs text-ink-500">to {dateTime(booking.expectedExitTime)}</span>
+                    </Td>
+                    <Td>{money(booking.pricing?.amount)}</Td>
+                    <Td>
+                      <Badge status={booking.status} />
+                      {booking.fraudFlags?.length > 0 && (
+                        <span
+                          className="ml-1 text-xs text-rose-600"
+                          title="A plate mismatch was recorded for this booking"
+                        >
+                          &#9888;
+                        </span>
+                      )}
+                    </Td>
+                    <Td>
+                      <Link
+                        to={`/app/bookings/${booking.bookingId}`}
+                        className="text-sm font-medium text-brand-700 hover:underline"
+                      >
+                        Details
+                      </Link>
+                    </Td>
+                  </tr>
+                ))}
+              </Table>
+            ) : (
+              <Table headers={['Session', 'Facility', 'Vehicle', 'Entry', 'Exit', 'Parked', 'Overstay', 'Total']}>
+                {data.items.map((session) => (
+                  <tr key={session.id} className="hover:bg-slate-50">
+                    <Td className="font-mono text-xs">{session.sessionId}</Td>
+                    <Td>
+                      <span className="block max-w-[16rem] truncate">{session.parkingLot?.name || '-'}</span>
+                    </Td>
+                    <Td>
+                      <span className="block font-mono text-xs">{session.vehicleNumber}</span>
+                      <span className="block text-xs text-ink-500">{vehicleLabel(session.vehicleType)}</span>
+                    </Td>
+                    <Td className="text-xs">{dateTime(session.actualEntryTime)}</Td>
+                    <Td className="text-xs">
+                      {session.actualExitTime ? dateTime(session.actualExitTime) : <Badge status="active">Inside</Badge>}
+                    </Td>
+                    <Td>{duration(session.parkedMinutes)}</Td>
+                    <Td>
+                      {session.billing?.overstayMinutes > 0 ? (
+                        <span className="text-amber-700">{duration(session.billing.overstayMinutes)}</span>
+                      ) : (
+                        '-'
+                      )}
+                    </Td>
+                    <Td>{money(session.billing?.totalAmount)}</Td>
+                  </tr>
+                ))}
+              </Table>
+            )}
             <Pagination pagination={data.pagination} onChange={load} />
           </>
         )}

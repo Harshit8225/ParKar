@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { errorMessage } from '../../api/client';
 import { paymentApi, sessionApi, usersApi } from '../../api/endpoints';
-import { Alert, Badge, Button, Card, EmptyState, KeyValue, Spinner, StatCard, Table, Td } from '../../components/ui';
+import { Alert, Badge, Button, Card, KeyValue, Spinner, StatCard } from '../../components/ui';
 import { useCheckout } from '../../hooks/useCheckout';
 import { dateTime, duration, money, vehicleLabel } from '../../utils/format';
 
@@ -55,7 +55,7 @@ const Dashboard = () => {
   if (error && !data) return <Alert kind="error">{error}</Alert>;
   if (!data) return <Spinner label="Loading your dashboard..." />;
 
-  const { stats, activeSession, upcomingBookings, recentSessions } = data;
+  const { stats, activeSession } = data;
 
   return (
     <div className="space-y-6">
@@ -65,10 +65,10 @@ const Dashboard = () => {
           <p className="text-sm text-ink-500">Here is what is happening with your parking.</p>
         </div>
         <Link
-          to="/app/search"
+          to="/"
           className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
         >
-          Find parking
+          Book parking
         </Link>
       </div>
 
@@ -146,67 +146,28 @@ const Dashboard = () => {
         </Card>
       )}
 
-      <Card title="Upcoming bookings" padded={false}>
-        {upcomingBookings.length === 0 ? (
-          <EmptyState
-            title="No upcoming bookings"
-            description="Search for a facility near you and reserve a slot for today."
-            action={
-              <Link
-                to="/app/search"
-                className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-              >
-                Find parking
-              </Link>
-            }
-          />
-        ) : (
-          <Table headers={['Booking', 'Facility', 'Vehicle', 'Entry window', 'Amount', '']}>
-            {upcomingBookings.map((booking) => (
-              <tr key={booking.id}>
-                <Td className="font-mono text-xs">{booking.bookingId}</Td>
-                <Td>{booking.parkingLot?.name}</Td>
-                <Td className="font-mono text-xs">{booking.vehicleNumber}</Td>
-                <Td>
-                  {dateTime(booking.expectedEntryTime)} &rarr; {dateTime(booking.expectedExitTime)}
-                </Td>
-                <Td>{money(booking.pricing?.amount)}</Td>
-                <Td>
-                  <Link to={`/app/bookings/${booking.bookingId}`} className="text-sm font-medium text-brand-700 hover:underline">
-                    View
-                  </Link>
-                </Td>
-              </tr>
-            ))}
-          </Table>
-        )}
-      </Card>
-
-      <Card title="Recent parking sessions" padded={false}>
-        {recentSessions.length === 0 ? (
-          <EmptyState title="No parking sessions yet" description="Your entry and exit history will appear here." />
-        ) : (
-          <Table headers={['Session', 'Facility', 'Vehicle', 'Entry', 'Exit', 'Parked', 'Overstay', 'Total']}>
-            {recentSessions.map((session) => (
-              <tr key={session.id}>
-                <Td className="font-mono text-xs">{session.sessionId}</Td>
-                <Td>{session.parkingLot?.name || '-'}</Td>
-                <Td className="font-mono text-xs">{session.vehicleNumber}</Td>
-                <Td>{dateTime(session.actualEntryTime)}</Td>
-                <Td>{session.actualExitTime ? dateTime(session.actualExitTime) : <Badge status="active">Inside</Badge>}</Td>
-                <Td>{duration(session.parkedMinutes)}</Td>
-                <Td>
-                  {session.billing?.overstayMinutes > 0 ? (
-                    <span className="text-amber-700">{duration(session.billing.overstayMinutes)}</span>
-                  ) : (
-                    '-'
-                  )}
-                </Td>
-                <Td>{money(session.billing?.totalAmount)}</Td>
-              </tr>
-            ))}
-          </Table>
-        )}
+      {/*
+        Booking and session history live in My Bookings, not here. This page is
+        only what needs attention right now: money owed, and the car in a bay.
+      */}
+      <Card
+        title="Your history"
+        subtitle="Reservations and your entry/exit record are kept together in My Bookings."
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to="/app/bookings"
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
+          >
+            Open My Bookings
+          </Link>
+          <Link
+            to="/app/payments"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-ink-700 ring-1 ring-slate-300 transition hover:bg-slate-50"
+          >
+            View payments
+          </Link>
+        </div>
       </Card>
     </div>
   );

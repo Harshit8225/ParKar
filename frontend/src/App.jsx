@@ -9,7 +9,6 @@ import Register from './pages/Register';
 
 import UserDashboard from './pages/user/Dashboard';
 import UserProfile from './pages/user/Profile';
-import SearchParking from './pages/user/SearchParking';
 import LotDetail from './pages/user/LotDetail';
 import MyBookings from './pages/user/MyBookings';
 import BookingDetail from './pages/user/BookingDetail';
@@ -64,7 +63,6 @@ const App = () => (
           }
         >
           <Route index element={<UserDashboard />} />
-          <Route path="search" element={<SearchParking />} />
           <Route path="parking/:id" element={<LotDetail />} />
           <Route path="bookings" element={<MyBookings />} />
           <Route path="bookings/:id" element={<BookingDetail />} />

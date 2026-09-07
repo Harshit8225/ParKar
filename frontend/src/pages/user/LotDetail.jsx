@@ -150,7 +150,7 @@ const LotDetail = () => {
 
   return (
     <div className="space-y-6">
-      <Link to="/app/search" className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
+      <Link to="/" className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
         &larr; Back to search
       </Link>
 
