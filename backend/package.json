@@ -1,0 +1,46 @@
+{
+  "name": "smart-parking-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Smart Parking Management System - modular monolithic backend",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "seed": "node src/seed/seed.js",
+    "test": "jest --runInBand"
+  },
+  "comment_overrides": "express 4.x pins a nested qs with GHSA-x5fp-wj9c-mxmx / GHSA-4mjr-xmp4-gh2g; force the patched release.",
+  "overrides": {
+    "qs": "^6.16.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.7.5",
+    "cors": "^2.8.5",
+    "dayjs": "^1.11.13",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.4.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5",
+    "morgan": "^1.10.0",
+    "multer": "^2.3.0",
+    "qs": "^6.16.0",
+    "rate-limit-redis": "^4.2.0",
+    "razorpay": "^2.9.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "supertest": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

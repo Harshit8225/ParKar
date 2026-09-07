@@ -1,0 +1,83 @@
+name: smart-parking
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-smart_parking}
+    volumes:
+      - mongo-data:/data/db
+    # Not published by default: only the backend needs it. Uncomment to inspect
+    # the database from the host with mongosh or Compass.
+    # ports:
+    #   - "27017:27017"
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Cache and locks are rebuildable state, so persistence is deliberately off.
+    command: ['redis-server', '--appendonly', 'no', '--save', '']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      API_PREFIX: /api/v1
+      MONGO_URI: mongodb://mongo:27017/${MONGO_DB:-smart_parking}
+      REDIS_URL: redis://redis:6379
+      # Required in production - the app refuses to start on the dev defaults.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET in .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET in .env}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      # The SPA is served from the same origin through Nginx, so this only
+      # matters for other clients (a native app, a gate device).
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      PLATFORM_COMMISSION_PERCENT: ${PLATFORM_COMMISSION_PERCENT:-10}
+      CAMERA_API_KEY: ${CAMERA_API_KEY:?set CAMERA_API_KEY in .env}
+    # Not published: Nginx is the only way in.
+    expose:
+      - '5000'
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Empty, so the SPA calls /api on its own origin and Nginx proxies it.
+        VITE_API_BASE_URL: ''
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '${HTTP_PORT:-8080}:80'
+
+volumes:
+  mongo-data:
+  redis-data:
