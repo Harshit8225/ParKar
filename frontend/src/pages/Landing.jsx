@@ -92,50 +92,50 @@ const Landing = () => {
     <div className="flex min-h-full flex-col bg-slate-50">
       <SiteHeader />
 
-      {/* ---------------------------------------------------------- hero ---- */}
-      <section className="relative isolate overflow-hidden">
+      {/* ---------------------------------------------------------- hero ----
+          Sized to one viewport minus the header, and vertically centred, so the
+          booking form is always above the fold - it is the point of the page.
+          4rem is the header at its tallest: py-3 plus the 40px avatar button. */}
+      <section className="relative isolate flex min-h-[calc(100svh-4rem)] flex-col overflow-hidden">
         <HeroScene />
 
-        <div className="relative mx-auto max-w-6xl px-4 pb-24 pt-16 sm:px-6 sm:pb-28 sm:pt-24">
+        <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-7 px-4 py-8 sm:gap-8 sm:px-6 sm:py-10">
           <div className="mx-auto max-w-3xl text-center">
             {isAuthenticated && role === 'user' && (
-              <p className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-cyan-100 ring-1 ring-inset ring-white/20 backdrop-blur">
+              <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-medium text-cyan-100 ring-1 ring-inset ring-white/20 backdrop-blur sm:text-sm">
                 <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
                 Welcome back, {user.name.split(' ')[0]}
               </p>
             )}
 
-            <h1 className="text-[2.1rem] font-extrabold uppercase leading-[1.05] tracking-tight text-white [text-shadow:0_2px_24px_rgba(2,6,23,0.85)] sm:text-6xl">
+            <h1 className="text-[1.9rem] font-extrabold uppercase leading-[1.05] tracking-tight text-white [text-shadow:0_2px_24px_rgba(2,6,23,0.85)] sm:text-5xl">
               Welcome to <BrandWord tone="light" />
             </h1>
 
-            <p className="mt-4 text-sm font-medium uppercase tracking-[0.22em] text-cyan-200/90 sm:text-base">
+            <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.22em] text-cyan-200/90 sm:text-sm">
               Your smarter, effortless parking solution
             </p>
 
-            <p className="mx-auto mt-8 max-w-2xl text-lg font-semibold leading-snug text-white/95 [text-shadow:0_2px_16px_rgba(2,6,23,0.85)] sm:text-2xl">
+            <p className="mx-auto mt-5 max-w-2xl text-base font-semibold leading-snug text-white/95 [text-shadow:0_2px_16px_rgba(2,6,23,0.85)] sm:text-xl">
               Revolutionize your parking experience.
               <br className="hidden sm:block" /> Find, book, and park instantly.
             </p>
 
-            <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-slate-200/85 sm:text-base">
-              ParKar shows you which bays are actually free right now, prices your exact window before you commit, and
-              opens the barrier by reading your number plate when you arrive.
+            <p className="mx-auto mt-3 max-w-xl text-xs leading-relaxed text-slate-200/85 sm:text-sm">
+              See which bays are free right now, priced for your exact window before you commit.
             </p>
           </div>
 
           {/* The booking journey runs here, on this page, start to finish. */}
-          <div className="mt-12">
-            <BookingFlow />
-          </div>
+          <BookingFlow />
 
-          <ul className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
             {HIGHLIGHTS.map((item) => (
-              <li key={item.title} className="flex flex-col items-center gap-2 text-center">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 text-cyan-200 ring-1 ring-inset ring-white/20 backdrop-blur">
-                  <Icon name={item.icon} className="h-5 w-5" />
+              <li key={item.title} className="flex flex-col items-center gap-1.5 text-center">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-cyan-200 ring-1 ring-inset ring-white/20 backdrop-blur">
+                  <Icon name={item.icon} className="h-4.5 w-4.5" />
                 </span>
-                <span className="text-xs font-semibold text-white/90 sm:text-sm">{item.title}</span>
+                <span className="text-[11px] font-semibold text-white/90 sm:text-xs">{item.title}</span>
               </li>
             ))}
           </ul>

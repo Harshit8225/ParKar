@@ -29,6 +29,12 @@ export const parkingApi = {
   recount: (id) => client.post(`/parking/${id}/recount`).then(unwrap),
 };
 
+export const geoApi = {
+  /** Coordinates -> a short place name, for the location field. */
+  reverse: (latitude, longitude) =>
+    client.get('/geo/reverse', { params: { latitude, longitude } }).then(unwrap),
+};
+
 export const pricingApi = {
   quote: (payload) => client.post('/pricing/quote', payload).then(unwrap),
   getRule: (lotId) => client.get(`/pricing/rules/${lotId}`).then(unwrap),

@@ -16,6 +16,7 @@ const modules = [
   { path: '/auth', router: require('./modules/auth/auth.routes') },
   { path: '/users', router: require('./modules/users/users.routes') },
   { path: '/parking', router: require('./modules/parking/parking.routes') },
+  { path: '/geo', router: require('./modules/geo/geo.routes') },
   { path: '/pricing', router: require('./modules/pricing/pricing.routes') },
   { path: '/bookings', router: require('./modules/booking/booking.routes') },
   { path: '/sessions', router: require('./modules/session/session.routes') },

@@ -1,7 +1,7 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { errorMessage } from '../api/client';
-import { bookingApi, parkingApi, pricingApi } from '../api/endpoints';
+import { bookingApi, geoApi, parkingApi, pricingApi } from '../api/endpoints';
 import { useAuth } from '../context/AuthContext';
 import { useCheckout } from '../hooks/useCheckout';
 import { money, timeOnly, toLocalInputValue, vehicleLabel } from '../utils/format';
@@ -35,7 +35,6 @@ const defaultArrival = () => {
 
 const ICONS = {
   pin: 'M12 21s6.5-5.3 6.5-10.2A6.5 6.5 0 0 0 5.5 10.8C5.5 15.7 12 21 12 21Zm0-8.2a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8Z',
-  crosshair: 'M12 3v3m0 12v3M3 12h3m12 0h3M12 7.6a4.4 4.4 0 1 0 0 8.8 4.4 4.4 0 0 0 0-8.8Z',
   back: 'M14 6l-6 6 6 6',
   lock: 'M7 10.5V8a5 5 0 0 1 10 0v2.5M6 10.5h12a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7.5a1 1 0 0 1 1-1Z',
   route: 'M6.5 20.5V9m0 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm11 0v6.5a4 4 0 0 1-4 4H9m0 0 2.5-2.5M9 20.5 11.5 23m6-14a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
@@ -349,11 +348,13 @@ const BookingFlow = () => {
   // independently of whether the search itself was by location or by text.
   const [userLocation, setUserLocation] = useState(null);
   const [locating, setLocating] = useState(false);
+  // 'gps' once the pin has filled the field, back to 'manual' the moment the
+  // driver edits it. This is what decides how the search is run.
+  const [locationSource, setLocationSource] = useState('manual');
 
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const [selected, setSelected] = useState(null);
   const [searchedWindow, setSearchedWindow] = useState(null);
 
@@ -363,6 +364,8 @@ const BookingFlow = () => {
   const routeRequest = useRef(null);
 
   const canSearch = isAuthenticated && role === 'user';
+  // The field holds a place the pin resolved, and has not been edited since.
+  const usingGps = locationSource === 'gps' && Boolean(form.location.trim());
 
   /** Resolve the browser position once, and hand it to every caller waiting. */
   const requestPosition = () =>
@@ -405,13 +408,19 @@ const BookingFlow = () => {
   const update = (field) => (event) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
     setError('');
+    // Typing over a location the pin filled in makes it a plain text search.
+    if (field === 'location') setLocationSource('manual');
   };
 
   /** Send a visitor to sign in, and bring them back to this page afterwards. */
   const requireAccount = () => navigate('/login', { state: { from: '/' } });
 
-  /** "Use my current location" - the second of the two ways to search. */
-  const useCurrentLocation = async () => {
+  /**
+   * The pin button: resolve the browser position, name it, and put that name in
+   * the field. The search still runs on the coordinates - the text is there so
+   * the driver can see where "here" is, and edit it to go somewhere else.
+   */
+  const fillFromCurrentLocation = async () => {
     if (!canSearch) {
       requireAccount();
       return;
@@ -420,9 +429,19 @@ const BookingFlow = () => {
     setLocating(true);
     setError('');
     try {
-      await requestPosition();
-      setForm((prev) => ({ ...prev, location: '' }));
-      setNotice('Using your current location.');
+      const position = await requestPosition();
+      let label = null;
+      try {
+        label = (await geoApi.reverse(position.latitude, position.longitude)).label;
+      } catch {
+        // Naming is a nicety; the coordinates are what actually drive the search.
+        label = null;
+      }
+      setForm((prev) => ({
+        ...prev,
+        location: label || `${position.latitude.toFixed(4)}, ${position.longitude.toFixed(4)}`,
+      }));
+      setLocationSource('gps');
     } catch (err) {
       setError(`${err.message} Allow location access, or type an area instead.`);
     } finally {
@@ -456,8 +475,9 @@ const BookingFlow = () => {
     }
 
     const query = form.location.trim();
-    if (query.length < 2 && !userLocation) {
-      setError('Type an area to search, or use your current location.');
+    const byGps = usingGps && Boolean(userLocation);
+    if (!byGps && query.length < 2) {
+      setError('Type an area to search, or tap the pin to use where you are.');
       return;
     }
 
@@ -466,7 +486,6 @@ const BookingFlow = () => {
 
     setSearching(true);
     setError('');
-    setNotice('');
     setSelected(null);
 
     const params = {
@@ -478,15 +497,15 @@ const BookingFlow = () => {
 
     // The two modes stay separate on purpose. A typed area searches on the text
     // alone - clipping it to the driver's GPS radius would silently hide the
-    // place they asked for. Only the current-location mode sorts by distance.
-    if (query.length >= 2) {
-      params.q = query;
-      params.sortBy = 'rate';
-    } else {
+    // place they asked for. Only the pin's coordinates sort by distance.
+    if (byGps) {
       params.latitude = userLocation.latitude;
       params.longitude = userLocation.longitude;
       params.radiusKm = 25;
       params.sortBy = 'distance';
+    } else {
+      params.q = query;
+      params.sortBy = 'rate';
     }
 
     try {
@@ -532,44 +551,50 @@ const BookingFlow = () => {
     }
   };
 
-  const durationLabel = useMemo(() => {
-    const entry = new Date(form.arrival);
-    const exit = new Date(form.departure);
-    if (Number.isNaN(entry.getTime()) || Number.isNaN(exit.getTime()) || exit <= entry) return null;
-    const hours = (exit - entry) / (60 * 60 * 1000);
-    return hours >= 1 ? `${Math.round(hours * 10) / 10}h` : `${Math.round(hours * 60)}m`;
-  }, [form.arrival, form.departure]);
-
   return (
     <div className="overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-[0_24px_70px_-20px_rgba(2,8,32,0.55)] ring-1 ring-black/5 backdrop-blur-xl">
       <form onSubmit={search} className="p-5 sm:p-7">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-base font-bold uppercase tracking-[0.06em] text-ink-900 sm:text-lg">
-            Book your parking space now
-          </h2>
-          {durationLabel && (
-            <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-              {durationLabel} of parking
-            </span>
-          )}
-        </div>
+        <h2 className="text-base font-bold uppercase tracking-[0.06em] text-ink-900 sm:text-lg">
+          Book your parking space now
+        </h2>
 
         <div className="mt-5 grid gap-3.5 lg:grid-cols-[1.5fr_1fr_1fr_1fr_auto] lg:items-end">
-          <label className="block">
-            <span className={FIELD_LABEL}>Location</span>
-            <span className="relative block">
-              <span className="pointer-events-none absolute inset-y-0 left-3.5 grid place-items-center text-slate-400">
-                <Icon name="pin" />
-              </span>
+          <div className="block">
+            <label htmlFor="parkar-location" className={FIELD_LABEL}>
+              Location
+            </label>
+            <div className="relative">
+              {/* The pin is the "use my location" control: tapping it fills this
+                  field with the driver's own neighbourhood. */}
+              <button
+                type="button"
+                onClick={fillFromCurrentLocation}
+                disabled={locating}
+                title="Use my current location"
+                aria-label="Use my current location"
+                className={`absolute inset-y-1.5 left-1.5 grid w-9 place-items-center rounded-lg transition ${
+                  usingGps ? 'text-brand-700' : 'text-slate-400 hover:text-brand-700'
+                } hover:bg-brand-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent`}
+              >
+                {locating ? (
+                  <span
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                  />
+                ) : (
+                  <Icon name="pin" className="h-4.5 w-4.5" />
+                )}
+              </button>
               <input
+                id="parkar-location"
                 type="text"
                 value={form.location}
                 onChange={update('location')}
-                placeholder={userLocation && !form.location ? 'Searching around you' : 'Area, city or facility'}
-                className={`${FIELD} pl-10`}
+                placeholder="Type an area, or tap the pin"
+                className={`${FIELD} pl-12`}
               />
-            </span>
-          </label>
+            </div>
+          </div>
 
           <label className="block">
             <span className={FIELD_LABEL}>Arrival date/time</span>
@@ -607,27 +632,11 @@ const BookingFlow = () => {
           </button>
         </div>
 
-        {/* The second way in: let the browser supply the location. */}
-        <div className="mt-3.5 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={useCurrentLocation}
-            disabled={locating}
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:ring-slate-200"
-          >
-            {locating ? (
-              <span
-                aria-hidden="true"
-                className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-              />
-            ) : (
-              <Icon name="crosshair" />
-            )}
-            {locating ? 'Locating you' : 'Use my current location'}
-          </button>
-
-          {userLocation && !form.location.trim() && (
-            <span className="text-xs font-medium text-emerald-700">Location ready</span>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+          {usingGps && (
+            <span className="text-xs font-medium text-emerald-700">
+              Searching around your location - edit the field to search somewhere else.
+            </span>
           )}
           {!canSearch && (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-500">
@@ -638,7 +647,6 @@ const BookingFlow = () => {
         </div>
 
         {error && <p className="mt-3 text-sm font-medium text-rose-600">{error}</p>}
-        {notice && !error && <p className="mt-3 text-sm font-medium text-emerald-700">{notice}</p>}
       </form>
 
       {/* ---- Map, and the facility the driver picks from it ---- */}

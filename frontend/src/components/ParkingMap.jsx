@@ -9,80 +9,91 @@ import { money } from '../utils/format';
  * Map of the facilities a search returned, the driver's own position, and - once
  * they ask for it - the driving route between the two.
  *
- * Tiles come from CARTO's free basemap and the route from OSRM, so the whole
- * map works without an API key.
+ * Tiles come from OpenStreetMap and the route from OSRM, so the whole map works
+ * without an API key.
  *
  * Leaflet's default marker points at image files that a bundler rewrites, so
- * pins are built from HTML with divIcon instead. That also lets a pin carry the
- * price, which is the entire reason to look at a map of parking.
+ * pins are drawn as inline SVG through divIcon instead - which also keeps them
+ * crisp at any zoom and recolourable per state.
  */
 
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+/**
+ * OpenStreetMap's own tile server: genuinely keyless. CARTO's basemaps look
+ * quieter but now stamp "API KEY REQUIRED" across every anonymous tile, so they
+ * are not an option without signing up.
+ */
+const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-const pinIcon = (label, { selected = false, soldOut = false } = {}) => {
-  const background = soldOut ? '#94a3b8' : selected ? '#0f172a' : '#1f43ec';
+/** Pin geometry: a teardrop whose tip is the exact coordinate. */
+const PIN_WIDTH = 28;
+const PIN_HEIGHT = 38;
+
+/**
+ * A plain blue map drop. The facility's name, free slots and distance live in
+ * the tooltip, so the pin itself stays a single clean shape rather than a
+ * label - a dozen price badges on one city centre was unreadable.
+ */
+const pinIcon = ({ selected = false, soldOut = false } = {}) => {
+  const fill = soldOut ? '#94a3b8' : selected ? '#0f172a' : '#1f43ec';
+  const scale = selected ? 1.18 : 1;
+  const width = PIN_WIDTH * scale;
+  const height = PIN_HEIGHT * scale;
 
   return L.divIcon({
     className: 'parkar-pin',
     html: `
-      <div style="transform:scale(${selected ? 1.14 : 1});transform-origin:bottom center">
-        <div style="
-          background:${background};
-          color:#fff;
-          font:600 12px/1 ui-sans-serif,system-ui,sans-serif;
-          padding:6px 9px;
-          border-radius:9px;
-          white-space:nowrap;
-          box-shadow:0 6px 16px -4px rgba(2,8,32,.55);
-          border:1.5px solid rgba(255,255,255,.9);
-        ">${label}</div>
-        <div style="
-          width:9px;height:9px;
-          background:${background};
-          margin:-5px auto 0;
-          transform:rotate(45deg);
-          border-right:1.5px solid rgba(255,255,255,.9);
-          border-bottom:1.5px solid rgba(255,255,255,.9);
-        "></div>
-      </div>
+      <svg width="${width}" height="${height}" viewBox="0 0 28 38" fill="none"
+           style="display:block;filter:drop-shadow(0 3px 5px rgba(2,8,32,.35))">
+        <path d="M14 1.5c-6.9 0-12.5 5.6-12.5 12.5 0 8.6 9.9 19.2 11.7 21.1a1.1 1.1 0 0 0 1.6 0C16.6 33.2 26.5 22.6 26.5 14 26.5 7.1 20.9 1.5 14 1.5Z"
+              fill="${fill}" stroke="#ffffff" stroke-width="2.5"/>
+        <circle cx="14" cy="14" r="5" fill="#ffffff"/>
+      </svg>
     `,
-    iconSize: [0, 0],
-    iconAnchor: [0, 34],
+    iconSize: [width, height],
+    // The drawn tip sits a touch above the bottom of the box, so anchor to the
+    // tip rather than the box - otherwise every pin floats a pixel or two off.
+    iconAnchor: [width / 2, height * 0.96],
+    tooltipAnchor: [0, -height * 0.9],
   });
 };
 
 /**
  * Keeps the right thing in frame: the whole route once directions are drawn,
  * otherwise every pin plus the driver.
+ *
+ * invalidateSize() has to run *before* every fit. Leaflet measures its
+ * container on mount, and this map mounts into a panel that was hidden a moment
+ * earlier, so the first measurement is too small - fitting against it picks a
+ * zoom for a tiny viewport and the result looks wildly zoomed out. The fit is
+ * then repeated once layout has settled, because the first pass can still land
+ * mid-transition.
  */
 const FitToContent = ({ points, routePath }) => {
   const map = useMap();
 
   useEffect(() => {
-    if (routePath?.length > 1) {
-      map.fitBounds(L.latLngBounds(routePath), { padding: [56, 56] });
-      return;
-    }
-    if (points.length === 0) return;
-    if (points.length === 1) {
-      map.setView(points[0], 15);
-      return;
-    }
-    map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 16 });
+    const fit = () => {
+      map.invalidateSize();
+
+      if (routePath?.length > 1) {
+        map.fitBounds(L.latLngBounds(routePath), { padding: [56, 56] });
+        return;
+      }
+      if (points.length === 0) return;
+      if (points.length === 1) {
+        map.setView(points[0], 15);
+        return;
+      }
+      map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 16 });
+    };
+
+    fit();
+    const settle = setTimeout(fit, 150);
+    return () => clearTimeout(settle);
   }, [map, points, routePath]);
 
-  return null;
-};
-
-/** Leaflet measures its container on mount; a just-revealed parent reads as 0. */
-const InvalidateOnMount = () => {
-  const map = useMap();
-  useEffect(() => {
-    const timer = setTimeout(() => map.invalidateSize(), 80);
-    return () => clearTimeout(timer);
-  }, [map]);
   return null;
 };
 
@@ -114,7 +125,6 @@ const ParkingMap = ({
       >
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} />
         <FitToContent points={points} routePath={route?.path} />
-        <InvalidateOnMount />
 
         {/* ---- The driving route, when the driver has asked for directions ---- */}
         {route?.path?.length > 1 && (
@@ -132,13 +142,13 @@ const ParkingMap = ({
               <Circle
                 center={[userLocation.latitude, userLocation.longitude]}
                 radius={Math.min(userLocation.accuracyMeters, 2000)}
-                pathOptions={{ color: '#f97316', weight: 1, fillColor: '#f97316', fillOpacity: 0.08 }}
+                pathOptions={{ color: '#e11d48', weight: 1, fillColor: '#e11d48', fillOpacity: 0.08 }}
               />
             )}
             <CircleMarker
               center={[userLocation.latitude, userLocation.longitude]}
               radius={8}
-              pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#f97316', fillOpacity: 1 }}
+              pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#e11d48', fillOpacity: 1 }}
             >
               <Tooltip direction="top" offset={[0, -8]}>
                 {userLocation.label || 'You are here'}
@@ -157,18 +167,21 @@ const ParkingMap = ({
             <Marker
               key={lot.id}
               position={[lot.location.latitude, lot.location.longitude]}
-              icon={pinIcon(available > 0 ? `${money(rate)}/hr` : 'Full', {
-                selected: lot.id === selectedId,
-                soldOut: available <= 0,
-              })}
+              icon={pinIcon({ selected: lot.id === selectedId, soldOut: available <= 0 })}
               keyboard
+              // City-centre facilities sit a few hundred metres apart, so pins
+              // overlap: lift the hovered one, and keep the chosen one on top.
+              riseOnHover
+              zIndexOffset={lot.id === selectedId ? 1000 : 0}
               alt={`${lot.name}, ${available} slots free`}
               eventHandlers={{ click: () => onSelect(lot) }}
             >
-              <Tooltip direction="top" offset={[0, -38]} opacity={1}>
+              {/* Positioned by the icon's tooltipAnchor, so it tracks the
+                  pin's size when the chosen one grows. */}
+              <Tooltip direction="top" opacity={1}>
                 <span className="font-semibold">{lot.name}</span>
                 <br />
-                {available > 0 ? `${available} slots free` : 'No free slots'}
+                {available > 0 ? `${money(rate)}/hr · ${available} slots free` : 'No free slots'}
                 {away ? ` · ${away} away` : ''}
               </Tooltip>
             </Marker>
