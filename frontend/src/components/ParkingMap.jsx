@@ -36,7 +36,13 @@ const PIN_HEIGHT = 38;
  * label - a dozen price badges on one city centre was unreadable.
  */
 const pinIcon = ({ selected = false, soldOut = false } = {}) => {
-  const fill = soldOut ? '#94a3b8' : selected ? '#0f172a' : '#1f43ec';
+  /**
+   * These are literal colours, not theme tokens, and deliberately so: the
+   * OpenStreetMap tiles underneath are always light, whichever theme the app is
+   * in. A pin that followed --tint would turn pale in dark mode and disappear
+   * into the tiles. They are the same System palette values, hard-set.
+   */
+  const fill = soldOut ? '#8E8E93' : selected ? '#1C1C1E' : '#007AFF';
   const scale = selected ? 1.18 : 1;
   const width = PIN_WIDTH * scale;
   const height = PIN_HEIGHT * scale;
@@ -115,13 +121,13 @@ const ParkingMap = ({
   const center = points[0] || [26.7606, 83.3732];
 
   return (
-    <div className={`overflow-hidden rounded-2xl border border-slate-200 ${className}`}>
+    <div className={`overflow-hidden rounded-card border border-separator ${className}`}>
       <MapContainer
         center={center}
         zoom={13}
         scrollWheelZoom={false}
         className="h-[22rem] w-full sm:h-[28rem]"
-        style={{ background: '#eef2f7' }}
+        style={{ background: '#E5E5EA' }}
       >
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} />
         <FitToContent points={points} routePath={route?.path} />
@@ -131,7 +137,7 @@ const ParkingMap = ({
           <>
             {/* Casing underneath, so the line stays legible over any tile */}
             <Polyline positions={route.path} pathOptions={{ color: '#ffffff', weight: 9, opacity: 0.9 }} />
-            <Polyline positions={route.path} pathOptions={{ color: '#1f43ec', weight: 5, opacity: 0.95 }} />
+            <Polyline positions={route.path} pathOptions={{ color: '#007AFF', weight: 5, opacity: 0.95 }} />
           </>
         )}
 
@@ -142,13 +148,13 @@ const ParkingMap = ({
               <Circle
                 center={[userLocation.latitude, userLocation.longitude]}
                 radius={Math.min(userLocation.accuracyMeters, 2000)}
-                pathOptions={{ color: '#e11d48', weight: 1, fillColor: '#e11d48', fillOpacity: 0.08 }}
+                pathOptions={{ color: '#FF3B30', weight: 1, fillColor: '#FF3B30', fillOpacity: 0.08 }}
               />
             )}
             <CircleMarker
               center={[userLocation.latitude, userLocation.longitude]}
               radius={8}
-              pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#e11d48', fillOpacity: 1 }}
+              pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#FF3B30', fillOpacity: 1 }}
             >
               <Tooltip direction="top" offset={[0, -8]}>
                 {userLocation.label || 'You are here'}

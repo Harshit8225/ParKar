@@ -1,7 +1,20 @@
 import { useEffect, useState } from 'react';
 import { errorMessage } from '../../api/client';
 import { paymentApi } from '../../api/endpoints';
-import { Alert, Badge, Card, EmptyState, Field, Pagination, Select, Spinner, StatCard, Table, Td } from '../../components/ui';
+import {
+  Alert,
+  Badge,
+  Card,
+  EmptyState,
+  Field,
+  PageHeader,
+  Pagination,
+  Select,
+  Spinner,
+  StatCard,
+  Table,
+  Td,
+} from '../../components/ui';
 import { dateTime, money, statusLabel } from '../../utils/format';
 
 const PURPOSE_LABEL = { booking: 'Pre-booking', overstay: 'Overstay', final: 'Final settlement' };
@@ -38,10 +51,11 @@ const Payments = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-ink-900">Payment history</h1>
-        <p className="text-sm text-ink-500">Every transaction on your account, including overstay charges.</p>
-      </div>
+      <PageHeader
+        eyebrow="Driver"
+        title="Payment history"
+        subtitle="Every transaction on your account, including overstay charges."
+      />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
 
@@ -88,18 +102,18 @@ const Payments = () => {
             <Table headers={['Transaction ID', 'Date', 'Facility', 'Booking', 'Purpose', 'Amount', 'Status']}>
               {data.items.map((txn) => (
                 <tr key={txn.id} className="hover:bg-slate-50">
-                  <Td className="font-mono text-xs">{txn.transactionId}</Td>
+                  <Td className="font-mono text-caption">{txn.transactionId}</Td>
                   <Td>{dateTime(txn.createdAt)}</Td>
                   <Td>
                     <span className="block max-w-[14rem] truncate">{txn.parkingLot?.name || '-'}</span>
                   </Td>
-                  <Td className="font-mono text-xs">{txn.booking?.bookingId || '-'}</Td>
+                  <Td className="font-mono text-caption">{txn.booking?.bookingId || '-'}</Td>
                   <Td>{PURPOSE_LABEL[txn.purpose] || statusLabel(txn.purpose)}</Td>
-                  <Td className="font-medium">{money(txn.amount)}</Td>
+                  <Td className="font-medium tabular-nums text-label">{money(txn.amount)}</Td>
                   <Td>
                     <Badge status={txn.status} />
                     {txn.failureReason && (
-                      <span className="mt-0.5 block max-w-[12rem] truncate text-xs text-rose-600" title={txn.failureReason}>
+                      <span className="mt-0.5 block max-w-[12rem] truncate text-caption text-rose-600" title={txn.failureReason}>
                         {txn.failureReason}
                       </span>
                     )}

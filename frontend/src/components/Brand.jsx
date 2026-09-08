@@ -10,7 +10,12 @@ export const BrandMark = ({ size = 'md', className = '' }) => {
   return (
     <span
       aria-hidden="true"
-      className={`grid shrink-0 place-items-center rounded-xl bg-brand-600 text-white shadow-sm ${box} ${className}`}
+      /**
+       * The radius is a percentage, not a token: an app-icon corner is a fixed
+       * proportion of the tile (Apple's is a touch over 22%), so a single value
+       * stays correct at all three sizes instead of needing one radius each.
+       */
+      className={`grid shrink-0 place-items-center rounded-[26%] bg-brand-600 text-white shadow-sm shadow-brand-600/25 ${box} ${className}`}
     >
       <svg viewBox="0 0 32 32" className="h-[70%] w-[70%]" fill="none">
         {/* The P */}
@@ -34,10 +39,10 @@ export const BrandMark = ({ size = 'md', className = '' }) => {
   );
 };
 
-/** "ParKar" - "Par" in the ink/white of the surface, "Kar" in the accent. */
+/** "ParKar" - "Par" in the label colour of the surface, "Kar" in the accent. */
 export const BrandWord = ({ tone = 'dark', className = '' }) => (
   <span className={`font-bold tracking-tight ${className}`}>
-    <span className={tone === 'light' ? 'text-white' : 'text-ink-900'}>Par</span>
+    <span className={tone === 'light' ? 'text-white' : 'text-label'}>Par</span>
     <span className="text-accent-500">Kar</span>
   </span>
 );

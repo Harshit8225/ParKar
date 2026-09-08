@@ -2,7 +2,16 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { errorMessage } from '../../api/client';
 import { geoApi, parkingApi } from '../../api/endpoints';
-import { Alert, Button, Field, Input, Spinner, Textarea } from '../../components/ui';
+import {
+  Alert,
+  Button,
+  Chip,
+  Field,
+  Input,
+  Spinner,
+  Textarea,
+} from '../../components/ui';
+import Icon from '../../components/Icon';
 
 /**
  * Registration and editing share one form; `id` decides which.
@@ -40,49 +49,11 @@ const EMPTY = {
   cctv: false,
 };
 
-const ICONS = {
-  bike: 'M5.5 18.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm13 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-13-3h6l3.5-7.5H12m2 0h3l1.5 7.5',
-  car: 'M5 17.5h14M6.5 17.5v-3.2a1.5 1.5 0 0 1 .44-1.06l2-2a1.5 1.5 0 0 1 1.06-.44h4a1.5 1.5 0 0 1 1.06.44l2 2a1.5 1.5 0 0 1 .44 1.06v3.2M4 13.5h16',
-  check: 'M5 12.5l4.5 4.5L19 7.5',
-  crosshair: 'M12 3v3m0 12v3M3 12h3m12 0h3M12 7.6a4.4 4.4 0 1 0 0 8.8 4.4 4.4 0 0 0 0-8.8Z',
-  wand: 'M4 20 14 10m0 0 2.5-2.5M14 10l-2.5-2.5M18 3v3m0 12v3m3-9h-3M9 6H6m12 9h3M6 9H3',
-};
-
-const Icon = ({ name, className = 'h-5 w-5' }) => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none">
-    <path d={ICONS[name]} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
 const Section = ({ title, children }) => (
-  <section className="rounded-2xl border border-slate-200 bg-white/95 p-5 shadow-sm backdrop-blur-sm sm:p-7">
-    <h2 className="text-base font-semibold text-ink-900">{title}</h2>
+  <section className="rounded-card border border-separator bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:p-7">
+    <h2 className="text-title-3 text-label">{title}</h2>
     <div className="mt-5">{children}</div>
   </section>
-);
-
-/** Amenities and the 24/7 flag read better as pressable chips than checkboxes. */
-const Toggle = ({ label, checked, onChange }) => (
-  <button
-    type="button"
-    onClick={() => onChange(!checked)}
-    aria-pressed={checked}
-    className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-medium transition ${
-      checked
-        ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-        : 'border-slate-200 bg-white text-ink-500 hover:border-slate-300 hover:text-ink-700'
-    }`}
-  >
-    <span
-      aria-hidden="true"
-      className={`grid h-4 w-4 place-items-center rounded-full border ${
-        checked ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300'
-      }`}
-    >
-      {checked && <Icon name="check" className="h-3 w-3" />}
-    </span>
-    {label}
-  </button>
 );
 
 /** Capacity and rate for one vehicle type, kept side by side deliberately. */
@@ -91,13 +62,13 @@ const VehicleBlock = ({ icon, title, capacity, rate, onCapacity, onRate }) => {
 
   return (
     <div
-      className={`rounded-xl border p-4 transition ${
-        needsRate ? 'border-amber-300 bg-amber-50/60' : 'border-slate-200 bg-slate-50'
+      className={`rounded-control border p-4 transition ${
+        needsRate ? 'border-amber-300 bg-amber-50/60' : 'border-separator bg-slate-50'
       }`}
     >
       <div className="flex items-center gap-2.5">
-        <Icon name={icon} className="h-5 w-5 text-ink-700" />
-        <p className="text-sm font-semibold text-ink-900">{title}</p>
+        <Icon name={icon} size={5} className="text-label" />
+        <p className="text-footnote font-semibold text-label">{title}</p>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -110,7 +81,7 @@ const VehicleBlock = ({ icon, title, capacity, rate, onCapacity, onRate }) => {
       </div>
 
       {needsRate && (
-        <p className="mt-2 text-xs font-medium text-amber-800">
+        <p className="mt-2 text-caption font-medium text-amber-800">
           Set a rate, or drop the slot count to zero.
         </p>
       )}
@@ -272,24 +243,24 @@ const LotForm = () => {
   return (
     <form onSubmit={handleSubmit}>
       {/* ---- Header band over the deck photograph ---- */}
-      <section className="relative isolate -mx-4 -mt-8 overflow-hidden sm:-mx-6">
+      <section className="band-teal relative isolate -mx-4 -mt-8 overflow-hidden sm:-mx-6">
         <img
           src="/hero-garage.jpg"
           alt=""
           aria-hidden="true"
+          width="1600"
+          height="420"
+          decoding="async"
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
+        <div aria-hidden="true" className="band-wash absolute inset-0" />
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-[linear-gradient(160deg,rgba(3,20,26,0.94)_0%,rgba(6,38,48,0.86)_55%,rgba(5,26,34,0.8)_100%)]"
-        />
-        <div
-          aria-hidden="true"
-          className="parkar-pulse absolute -right-20 top-6 h-2 w-1/2 rotate-[8deg] rounded-full bg-[linear-gradient(270deg,transparent,#34d399,#a7f3d0)] blur-[3px]"
+          className="parkar-pulse band-strip absolute -right-20 top-6 h-2 w-1/2 rotate-[8deg] rounded-capsule blur-[3px]"
         />
 
         <div className="relative mx-auto max-w-3xl px-4 py-12 text-center sm:px-6 sm:py-16">
-          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-4xl">
+          <h1 className="text-title-1 text-white">
             {isEdit ? 'Edit facility' : 'Register a parking facility'}
           </h1>
         </div>
@@ -299,7 +270,7 @@ const LotForm = () => {
       <div className="relative">
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-96 overflow-hidden">
           <img src="/hero-garage.jpg" alt="" className="h-full w-full object-cover opacity-[0.07]" />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(248,250,252,0.55)_0%,rgba(248,250,252,0.9)_60%,#f8fafc_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--canvas)_55%,transparent)_0%,color-mix(in_oklab,var(--canvas)_90%,transparent)_60%,var(--canvas)_100%)]" />
         </div>
 
         <div className="relative mx-auto mt-8 max-w-3xl space-y-5">
@@ -335,7 +306,7 @@ const LotForm = () => {
           <Section title="Location">
             <Suspense
               fallback={
-                <div className="grid h-64 place-items-center rounded-xl border border-slate-200 bg-slate-100 text-sm text-ink-500">
+                <div className="grid h-64 place-items-center rounded-control border border-separator bg-slate-100 text-footnote text-label-secondary">
                   Loading map...
                 </div>
               }
@@ -349,7 +320,7 @@ const LotForm = () => {
 
             <div className="mt-3 flex flex-wrap gap-2">
               <Button tone="secondary" size="sm" onClick={useMyLocation} loading={locating}>
-                <Icon name="crosshair" className="h-4 w-4" />
+                <Icon name="crosshair" size={4} />
                 I am at the facility
               </Button>
               <Button
@@ -359,7 +330,7 @@ const LotForm = () => {
                 loading={filling}
                 disabled={!form.latitude}
               >
-                <Icon name="wand" className="h-4 w-4" />
+                <Icon name="wand" size={4} />
                 Fill address from pin
               </Button>
             </div>
@@ -430,7 +401,7 @@ const LotForm = () => {
           </Section>
 
           <Section title="Operating hours">
-            <Toggle label="Open 24 hours, 7 days a week" checked={form.is24x7} onChange={set('is24x7')} />
+            <Chip label="Open 24 hours, 7 days a week" checked={form.is24x7} onChange={set('is24x7')} />
             {!form.is24x7 && (
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <Field label="Opening time" required>
@@ -445,10 +416,10 @@ const LotForm = () => {
 
           <Section title="Amenities">
             <div className="flex flex-wrap gap-2.5">
-              <Toggle label="EV charging" checked={form.evCharging} onChange={set('evCharging')} />
-              <Toggle label="Covered parking" checked={form.covered} onChange={set('covered')} />
-              <Toggle label="On-site security" checked={form.security} onChange={set('security')} />
-              <Toggle label="CCTV" checked={form.cctv} onChange={set('cctv')} />
+              <Chip label="EV charging" checked={form.evCharging} onChange={set('evCharging')} />
+              <Chip label="Covered parking" checked={form.covered} onChange={set('covered')} />
+              <Chip label="On-site security" checked={form.security} onChange={set('security')} />
+              <Chip label="CCTV" checked={form.cctv} onChange={set('cctv')} />
             </div>
           </Section>
 

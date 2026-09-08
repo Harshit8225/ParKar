@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import Brand, { BrandWord } from '../components/Brand';
 import BookingFlow from '../components/BookingFlow';
 import HeroScene from '../components/HeroScene';
+import Icon, { IconTile } from '../components/Icon';
 import SiteHeader from '../components/SiteHeader';
+import { LinkButton } from '../components/ui';
 import { homeRouteFor, useAuth } from '../context/AuthContext';
 
 /**
@@ -11,28 +12,6 @@ import { homeRouteFor, useAuth } from '../context/AuthContext';
  * the whole search-price-pay journey without leaving the page. Everything
  * personal to a driver lives behind the avatar menu instead.
  */
-
-const ICON_PATHS = {
-  radar:
-    'M12 12v-8m0 8 5.7 5.7M4.2 12a7.8 7.8 0 1 0 15.6 0 7.8 7.8 0 0 0-15.6 0Zm3.4 0a4.4 4.4 0 1 0 8.8 0 4.4 4.4 0 0 0-8.8 0Z',
-  bolt: 'M13.5 3 5.5 13.5h5L9.5 21l8-10.5h-5L13.5 3Z',
-  shield: 'M12 3.2 5 6v6c0 4.2 2.9 7.3 7 8.8 4.1-1.5 7-4.6 7-8.8V6l-7-2.8Zm-2.4 8.6 2 2 3.4-3.6',
-  pin: 'M12 21s6.5-5.3 6.5-10.2A6.5 6.5 0 0 0 5.5 10.8C5.5 15.7 12 21 12 21Zm0-8.2a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8Z',
-  camera:
-    'M4.5 8.5h3l1.5-2.2h6L16.5 8.5h3A1.5 1.5 0 0 1 21 10v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18v-8a1.5 1.5 0 0 1 1.5-1.5Zm7.5 3.2a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Z',
-  tag: 'M20.5 12.8 12.8 20.5a1.6 1.6 0 0 1-2.3 0L3.5 13.5V4.5a1 1 0 0 1 1-1h9l7 7a1.6 1.6 0 0 1 0 2.3ZM8 8h.01',
-  clock: 'M12 7.5V12l3 2M4.5 12a7.5 7.5 0 1 0 15 0 7.5 7.5 0 0 0-15 0Z',
-  mail: 'M3.5 7.5h17v9a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5v-9Zm0 .5 8.5 6 8.5-6',
-  phone:
-    'M7 3.5 9.5 8 7.8 9.8a12 12 0 0 0 4.4 4.4L14 12.5l4.5 2.5v3.5A1.5 1.5 0 0 1 17 20C10.4 19.4 4.6 13.6 4 7a1.5 1.5 0 0 1 1.5-1.6H7V3.5Z',
-  chat: 'M4.5 5.5h15v10h-9l-4 3.5v-3.5h-2v-10Z',
-};
-
-const Icon = ({ name, className = 'h-5 w-5' }) => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none">
-    <path d={ICON_PATHS[name]} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
 
 const HIGHLIGHTS = [
   { icon: 'radar', title: 'Real-time Availability' },
@@ -84,12 +63,15 @@ const FAQS = [
   },
 ];
 
+/** The small caps label that opens each section below the fold. */
+const SectionLabel = ({ children }) => <p className="eyebrow text-accent-600">{children}</p>;
+
 const Landing = () => {
   const { isAuthenticated, user, role } = useAuth();
   const year = useMemo(() => new Date().getFullYear(), []);
 
   return (
-    <div className="flex min-h-full flex-col bg-slate-50">
+    <div className="flex min-h-full flex-col bg-canvas">
       <SiteHeader />
 
       {/* ---------------------------------------------------------- hero ----
@@ -99,29 +81,29 @@ const Landing = () => {
       <section className="relative isolate flex min-h-[calc(100svh-4rem)] flex-col overflow-hidden">
         <HeroScene />
 
-        <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-7 px-4 py-8 sm:gap-8 sm:px-6 sm:py-10">
+        <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-8 px-4 py-8 sm:px-6 sm:py-10">
           <div className="mx-auto max-w-3xl text-center">
             {isAuthenticated && role === 'user' && (
-              <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-medium text-cyan-100 ring-1 ring-inset ring-white/20 backdrop-blur sm:text-sm">
-                <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
+              <p className="glass mb-5 inline-flex items-center gap-2 rounded-capsule px-4 py-1.5 text-footnote font-medium text-cyan-100">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-capsule bg-cyan-300" />
                 Welcome back, {user.name.split(' ')[0]}
               </p>
             )}
 
-            <h1 className="text-[1.9rem] font-extrabold uppercase leading-[1.05] tracking-tight text-white [text-shadow:0_2px_24px_rgba(2,6,23,0.85)] sm:text-5xl">
+            {/* The display size carries its own -0.032em tracking from the type
+                scale, which is what stops a 68px headline reading as loose. */}
+            <h1 className="text-display uppercase text-white [text-shadow:0_2px_24px_rgba(2,6,23,0.85)]">
               Welcome to <BrandWord tone="light" />
             </h1>
 
-            <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.22em] text-cyan-200/90 sm:text-sm">
-              Your smarter, effortless parking solution
-            </p>
+            <p className="eyebrow mt-4 text-cyan-200/90">Your smarter, effortless parking solution</p>
 
-            <p className="mx-auto mt-5 max-w-2xl text-base font-semibold leading-snug text-white/95 [text-shadow:0_2px_16px_rgba(2,6,23,0.85)] sm:text-xl">
+            <p className="mx-auto mt-6 max-w-2xl text-title-3 font-semibold text-white/95 [text-shadow:0_2px_16px_rgba(2,6,23,0.85)]">
               Revolutionize your parking experience.
               <br className="hidden sm:block" /> Find, book, and park instantly.
             </p>
 
-            <p className="mx-auto mt-3 max-w-xl text-xs leading-relaxed text-slate-200/85 sm:text-sm">
+            <p className="mx-auto mt-3.5 max-w-xl text-callout leading-relaxed text-white/70">
               See which bays are free right now, priced for your exact window before you commit.
             </p>
           </div>
@@ -129,95 +111,88 @@ const Landing = () => {
           {/* The booking journey runs here, on this page, start to finish. */}
           <BookingFlow />
 
-          <ul className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4">
             {HIGHLIGHTS.map((item) => (
-              <li key={item.title} className="flex flex-col items-center gap-1.5 text-center">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-cyan-200 ring-1 ring-inset ring-white/20 backdrop-blur">
-                  <Icon name={item.icon} className="h-4.5 w-4.5" />
+              <li key={item.title} className="flex flex-col items-center gap-2 text-center">
+                <span className="glass grid h-10 w-10 place-items-center rounded-control text-cyan-200">
+                  <Icon name={item.icon} size={4.5} />
                 </span>
-                <span className="text-[11px] font-semibold text-white/90 sm:text-xs">{item.title}</span>
+                <span className="text-caption font-semibold text-white/90">{item.title}</span>
               </li>
             ))}
           </ul>
         </div>
       </section>
 
-      {/* ------------------------------------------------------ features ---- */}
-      <section id="features" className="scroll-mt-24 bg-white py-20">
+      {/* ------------------------------------------------------ features ----
+          defer-paint: below the fold, so it skips layout and paint until it is
+          scrolled near. The reserved intrinsic size means this cannot shift. */}
+      <section id="features" className="defer-paint scroll-mt-24 bg-surface py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-600">Features</p>
-            <h2 className="mt-3 text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">
+            <SectionLabel>Features</SectionLabel>
+            <h2 className="mt-3.5 text-title-1 text-label">
               A parking system that ends at the barrier, not at the booking
             </h2>
           </div>
 
-          <div className="mt-12 grid gap-8 md:grid-cols-3">
+          <div className="mt-14 grid gap-10 md:grid-cols-3">
             {FEATURES.map((feature) => (
               <article key={feature.title}>
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-700">
-                  <Icon name={feature.icon} className="h-6 w-6" />
-                </span>
-                <h3 className="mt-4 text-base font-semibold text-ink-900">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink-500">{feature.copy}</p>
+                <IconTile name={feature.icon} size="lg" />
+                <h3 className="mt-5 text-title-3 text-label">{feature.title}</h3>
+                <p className="mt-2.5 text-callout leading-relaxed text-label-secondary">{feature.copy}</p>
               </article>
             ))}
           </div>
 
-          {!isAuthenticated && (
-            <div className="mt-14 flex flex-wrap items-center justify-center gap-3 border-t border-slate-100 pt-10">
-              <Link
-                to="/register"
-                className="rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-700"
-              >
-                Create a free account
-              </Link>
-              <Link
-                to="/login"
-                className="rounded-xl px-6 py-3 text-sm font-semibold text-ink-700 ring-1 ring-slate-300 transition hover:bg-slate-50"
-              >
-                I already have one
-              </Link>
-            </div>
-          )}
-          {isAuthenticated && (
-            <div className="mt-14 flex justify-center border-t border-slate-100 pt-10">
-              <Link
-                to={role === 'user' ? '/app' : homeRouteFor(role)}
-                className="rounded-xl bg-ink-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
-              >
+          <div className="mt-16 flex flex-wrap items-center justify-center gap-3 border-t border-separator pt-12">
+            {isAuthenticated ? (
+              <LinkButton to={role === 'user' ? '/app' : homeRouteFor(role)} size="lg">
                 Go to my dashboard
-              </Link>
-            </div>
-          )}
+              </LinkButton>
+            ) : (
+              <>
+                <LinkButton to="/register" size="lg">
+                  Create a free account
+                </LinkButton>
+                <LinkButton to="/login" tone="secondary" size="lg">
+                  I already have one
+                </LinkButton>
+              </>
+            )}
+          </div>
         </div>
       </section>
 
       {/* -------------------------------------------- contact and support ---- */}
-      <section className="bg-slate-50 py-20">
-        <div className="mx-auto grid max-w-6xl gap-14 px-4 sm:px-6 lg:grid-cols-[0.8fr_1fr]">
+      <section className="defer-paint bg-canvas py-24">
+        <div className="mx-auto grid max-w-6xl gap-16 px-4 sm:px-6 lg:grid-cols-[0.8fr_1fr]">
           <div id="contact" className="scroll-mt-24">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-600">Contact</p>
-            <h2 className="mt-3 text-2xl font-bold tracking-tight text-ink-900">Talk to the ParKar team</h2>
-            <p className="mt-3 text-sm leading-relaxed text-ink-500">
+            <SectionLabel>Contact</SectionLabel>
+            <h2 className="mt-3.5 text-title-2 text-label">Talk to the ParKar team</h2>
+            <p className="mt-3.5 text-callout leading-relaxed text-label-secondary">
               Questions about a booking, or you run a facility and want your slots on the platform? We reply the same
               working day.
             </p>
 
-            <ul className="mt-7 space-y-4">
+            <ul className="mt-8 space-y-4">
               {CONTACT_ROWS.map((row) => (
-                <li key={row.label} className="flex items-start gap-3">
-                  <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-brand-700 ring-1 ring-slate-200">
-                    <Icon name={row.icon} className="h-4.5 w-4.5" />
+                <li key={row.label} className="flex items-start gap-3.5">
+                  <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-control bg-surface text-brand-700 ring-1 ring-separator">
+                    <Icon name={row.icon} size={4.5} />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">{row.label}</p>
+                    <p className="eyebrow text-label-tertiary">{row.label}</p>
                     {row.href ? (
-                      <a href={row.href} className="text-sm font-medium text-ink-900 transition hover:text-brand-700">
+                      <a
+                        href={row.href}
+                        className="text-callout font-medium text-label transition-colors hover:text-brand-700"
+                      >
                         {row.value}
                       </a>
                     ) : (
-                      <p className="text-sm font-medium text-ink-900">{row.value}</p>
+                      <p className="text-callout font-medium text-label">{row.value}</p>
                     )}
                   </div>
                 </li>
@@ -226,21 +201,21 @@ const Landing = () => {
           </div>
 
           <div id="support" className="scroll-mt-24">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-600">Support</p>
-            <h2 className="mt-3 text-2xl font-bold tracking-tight text-ink-900">Stuck at a gate right now?</h2>
-            <p className="mt-3 text-sm leading-relaxed text-ink-500">
+            <SectionLabel>Support</SectionLabel>
+            <h2 className="mt-3.5 text-title-2 text-label">Stuck at a gate right now?</h2>
+            <p className="mt-3.5 text-callout leading-relaxed text-label-secondary">
               Start here. If your vehicle is at a barrier that has not opened, call the support line and we will clear
               you through manually.
             </p>
 
-            <dl className="mt-7 space-y-3">
+            <dl className="mt-8 space-y-3">
               {FAQS.map((item) => (
-                <div key={item.q} className="rounded-xl border border-slate-200 bg-white p-4">
-                  <dt className="flex items-start gap-2.5 text-sm font-semibold text-ink-900">
-                    <Icon name="chat" className="mt-0.5 h-4 w-4 shrink-0 text-accent-500" />
+                <div key={item.q} className="rounded-card border border-separator bg-surface p-4.5">
+                  <dt className="flex items-start gap-2.5 text-callout font-semibold text-label">
+                    <Icon name="chat" size={4} className="mt-1 text-accent-500" />
                     {item.q}
                   </dt>
-                  <dd className="mt-1.5 pl-6.5 text-sm leading-relaxed text-ink-500">{item.a}</dd>
+                  <dd className="mt-2 pl-7 text-footnote leading-relaxed text-label-secondary">{item.a}</dd>
                 </div>
               ))}
             </dl>
@@ -249,20 +224,20 @@ const Landing = () => {
       </section>
 
       {/* -------------------------------------------------------- footer ---- */}
-      <footer className="border-t border-slate-200 bg-white py-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
+      <footer className="border-t border-separator bg-surface py-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 px-4 sm:flex-row sm:px-6">
           <Brand size="sm" />
-          <p className="text-xs text-ink-500">
+          <p className="text-caption text-label-tertiary">
             &copy; {year} ParKar &middot; Smart parking with number-plate recognition
           </p>
-          <div className="flex gap-5 text-xs font-medium text-ink-500">
-            <a href="#features" className="transition hover:text-brand-700">
+          <div className="flex gap-5 text-caption font-medium text-label-secondary">
+            <a href="#features" className="transition-colors hover:text-brand-700">
               Features
             </a>
-            <a href="#contact" className="transition hover:text-brand-700">
+            <a href="#contact" className="transition-colors hover:text-brand-700">
               Contact
             </a>
-            <a href="#support" className="transition hover:text-brand-700">
+            <a href="#support" className="transition-colors hover:text-brand-700">
               Support
             </a>
           </div>

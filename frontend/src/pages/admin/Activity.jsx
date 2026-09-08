@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { errorMessage } from '../../api/client';
 import { adminApi } from '../../api/endpoints';
-import { Alert, Badge, Button, Card, EmptyState, Pagination, Spinner, StatCard, Table, Td } from '../../components/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  Pagination,
+  Spinner,
+  StatCard,
+  Table,
+  Td,
+} from '../../components/ui';
 import { dateTime, duration, money, statusLabel } from '../../utils/format';
 
 /** How often the live view refreshes itself while the page is open. */
@@ -45,13 +57,8 @@ const Activity = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-ink-900">Live parking activity</h1>
-          <p className="text-sm text-ink-500">
-            Every vehicle currently inside a facility.
-            {lastUpdated && ` Updated ${dateTime(lastUpdated)}.`}
-          </p>
-        </div>
+        <PageHeader eyebrow="Platform admin" title="Live parking activity" subtitle={<>Every vehicle currently inside a facility.
+            {lastUpdated && ` Updated ${dateTime(lastUpdated)}.`}</>} />
         <Button tone="secondary" onClick={() => load(page)}>
           Refresh now
         </Button>
@@ -75,11 +82,11 @@ const Activity = () => {
             <Table headers={['Session', 'Vehicle', 'Facility', 'Driver', 'Entered', 'Booked exit', 'Parked', 'State']}>
               {data.items.map((item) => (
                 <tr key={item.sessionId} className={item.isOverstaying ? 'bg-amber-50' : 'hover:bg-slate-50'}>
-                  <Td className="font-mono text-xs">{item.sessionId}</Td>
-                  <Td className="font-mono text-xs">{item.vehicleNumber}</Td>
+                  <Td className="font-mono text-caption">{item.sessionId}</Td>
+                  <Td className="font-mono text-caption">{item.vehicleNumber}</Td>
                   <Td>
                     <span className="block max-w-[13rem] truncate">{item.parkingLot}</span>
-                    <span className="block text-xs text-ink-500">{item.city}</span>
+                    <span className="block text-caption text-label-secondary">{item.city}</span>
                   </Td>
                   <Td>
                     <span className="block max-w-[11rem] truncate">{item.user?.name || '-'}</span>
@@ -94,7 +101,7 @@ const Activity = () => {
                       <Badge status={item.status} />
                     )}
                     {item.amountDue > 0 && (
-                      <span className="ml-1 text-xs font-medium text-rose-600">{money(item.amountDue)} due</span>
+                      <span className="ml-1 text-caption font-medium text-rose-600">{money(item.amountDue)} due</span>
                     )}
                   </Td>
                 </tr>
@@ -115,12 +122,12 @@ const Activity = () => {
                   <span className="block max-w-[13rem] truncate">{event.parkingLot?.name || '-'}</span>
                 </Td>
                 <Td>{statusLabel(event.eventType)}</Td>
-                <Td className="font-mono text-xs">{event.recognizedPlate || '-'}</Td>
+                <Td className="font-mono text-caption">{event.recognizedPlate || '-'}</Td>
                 <Td>
                   <Badge tone="bg-rose-100 text-rose-700 ring-rose-200">{statusLabel(event.result)}</Badge>
                 </Td>
                 <Td>
-                  <span className="block max-w-[22rem] truncate text-xs text-ink-500" title={event.message}>
+                  <span className="block max-w-[22rem] truncate text-caption text-label-secondary" title={event.message}>
                     {event.message}
                   </span>
                 </Td>

@@ -1,7 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../../api/client';
 import { parkingApi, recognitionApi } from '../../api/endpoints';
-import { Alert, Badge, Button, Card, Field, Input, KeyValue, Select, Spinner } from '../../components/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Field,
+  Input,
+  KeyValue,
+  PageHeader,
+  Select,
+  Spinner,
+} from '../../components/ui';
 import { dateTime, duration, money, statusLabel } from '../../utils/format';
 
 /**
@@ -160,7 +171,7 @@ const GateTerminal = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-ink-900">Gate terminal</h1>
+        <h1 className="text-title-2 text-label">Gate terminal</h1>
       </div>
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
@@ -195,11 +206,11 @@ const GateTerminal = () => {
           </Card>
 
           <Card title="Camera">
-            <div className="overflow-hidden rounded-lg bg-ink-900">
+            <div className="overflow-hidden panel-dark rounded-control">
               {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
               <video ref={videoRef} className={`aspect-video w-full object-cover ${cameraOn ? '' : 'hidden'}`} playsInline muted />
               {!cameraOn && (
-                <div className="flex aspect-video w-full items-center justify-center text-sm text-slate-400">
+                <div className="flex aspect-video w-full items-center justify-center text-footnote text-white/45">
                   {preview ? (
                     <img src={preview} alt="Last captured frame" className="h-full w-full object-contain" />
                   ) : (
@@ -274,7 +285,7 @@ const GateResult = ({ result, busy, mode }) => {
   if (!result) {
     return (
       <Card title="Gate decision">
-        <div className="py-12 text-center text-sm text-ink-500">
+        <div className="py-12 text-center text-footnote text-label-secondary">
           Capture a vehicle to see the decision here.
         </div>
       </Card>
@@ -286,32 +297,32 @@ const GateResult = ({ result, busy, mode }) => {
   return (
     <Card title="Gate decision" className="lg:sticky lg:top-20">
       <div
-        className={`rounded-lg p-5 text-center ring-1 ring-inset ${
+        className={`rounded-control p-5 text-center ring-1 ring-inset ${
           allowed ? 'bg-emerald-50 ring-emerald-200' : 'bg-rose-50 ring-rose-200'
         }`}
       >
-        <p className={`text-3xl font-bold ${allowed ? 'text-emerald-700' : 'text-rose-700'}`}>
+        <p className={`text-title-1 ${allowed ? 'text-emerald-700' : 'text-rose-700'}`}>
           {allowed ? 'BARRIER OPEN' : 'BARRIER CLOSED'}
         </p>
-        <p className={`mt-2 text-sm ${allowed ? 'text-emerald-800' : 'text-rose-800'}`}>{result.message}</p>
+        <p className={`mt-2 text-footnote ${allowed ? 'text-emerald-800' : 'text-rose-800'}`}>{result.message}</p>
       </div>
 
       <div className="mt-4 space-y-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Recognition</p>
+          <p className="eyebrow text-label-tertiary">Recognition</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-3">
-            <span className="rounded-lg bg-slate-100 px-3 py-1.5 font-mono text-lg font-semibold text-ink-900">
+            <span className="rounded-control bg-slate-100 px-3.5 py-2 font-mono text-title-3 tracking-wider text-label">
               {result.recognition?.plate || 'UNREADABLE'}
             </span>
             {result.recognition?.confidence !== undefined && (
-              <span className="text-sm text-ink-500">
+              <span className="text-footnote text-label-secondary">
                 {(result.recognition.confidence * 100).toFixed(0)}% confidence
               </span>
             )}
             <Badge status={allowed ? 'confirmed' : 'failed'}>{statusLabel(result.result)}</Badge>
           </div>
           {result.recognition?.matchKind && result.recognition.matchKind !== 'exact' && (
-            <p className="mt-1 text-xs text-amber-700">
+            <p className="mt-1 text-caption text-amber-700">
               Matched approximately ({result.recognition.matchKind}). Logged for review.
             </p>
           )}
@@ -325,8 +336,8 @@ const GateResult = ({ result, busy, mode }) => {
         {result.reviewFlag && <Alert kind="warning">{result.reviewFlag}</Alert>}
 
         {result.booking && (
-          <div className="border-t border-slate-100 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Booking</p>
+          <div className="border-t border-separator pt-4">
+            <p className="eyebrow text-label-tertiary">Booking</p>
             <div className="mt-2">
               <KeyValue
                 rows={[
@@ -342,8 +353,8 @@ const GateResult = ({ result, busy, mode }) => {
         )}
 
         {result.session && (
-          <div className="border-t border-slate-100 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Session</p>
+          <div className="border-t border-separator pt-4">
+            <p className="eyebrow text-label-tertiary">Session</p>
             <div className="mt-2">
               <KeyValue
                 rows={[
@@ -358,26 +369,26 @@ const GateResult = ({ result, busy, mode }) => {
         )}
 
         {result.bill && mode === 'exit' && (
-          <div className="border-t border-slate-100 pt-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Final bill</p>
-            <dl className="mt-2 space-y-1.5 text-sm">
+          <div className="border-t border-separator pt-4">
+            <p className="eyebrow text-label-tertiary">Final bill</p>
+            <dl className="mt-2 space-y-1.5 text-footnote tabular-nums">
               <div className="flex justify-between">
-                <dt className="text-ink-500">Parked for</dt>
-                <dd className="text-ink-900">{duration(result.bill.parkedMinutes)}</dd>
+                <dt className="text-label-secondary">Parked for</dt>
+                <dd className="text-label">{duration(result.bill.parkedMinutes)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-ink-500">Overstay</dt>
-                <dd className={result.bill.overstayMinutes > 0 ? 'text-amber-700' : 'text-ink-900'}>
+                <dt className="text-label-secondary">Overstay</dt>
+                <dd className={result.bill.overstayMinutes > 0 ? 'text-amber-700' : 'text-label'}>
                   {result.bill.overstayMinutes > 0 ? duration(result.bill.overstayMinutes) : 'None'}
                 </dd>
               </div>
               {(result.bill.breakdown || []).map((line, index) => (
                 <div key={`${line.label}-${index}`} className="flex justify-between">
-                  <dt className="text-ink-500">{line.label}</dt>
-                  <dd className="text-ink-900">{money(line.amount)}</dd>
+                  <dt className="text-label-secondary">{line.label}</dt>
+                  <dd className="text-label">{money(line.amount)}</dd>
                 </div>
               ))}
-              <div className="flex justify-between border-t border-slate-200 pt-2 font-semibold">
+              <div className="flex justify-between border-t border-separator pt-2 font-semibold">
                 <dt>Total</dt>
                 <dd>{money(result.bill.totalAmount)}</dd>
               </div>

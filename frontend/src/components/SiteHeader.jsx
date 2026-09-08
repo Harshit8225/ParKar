@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import Brand from './Brand';
+import { BrandMark, BrandWord } from './Brand';
 import UserMenu from './UserMenu';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 /**
  * The one header the whole product uses.
@@ -11,6 +12,10 @@ import { useAuth } from '../context/AuthContext';
  * lives in the avatar menu instead, so the bar stays as short as the design.
  * Owners and admins keep their panel links, because those panels have pages
  * that have nowhere else to live.
+ *
+ * This is the product's only floating layer that is always on screen, so it is
+ * where Liquid Glass belongs: `.glass` gives it the blur, the saturation lift
+ * and the half-pixel top highlight that make content appear to pass *under* it.
  */
 
 const MARKETING_LINKS = [
@@ -52,6 +57,44 @@ const activeLinkFor = (pathname, links = []) => {
   return matches.reduce((best, link) => (link.to.length > best.to.length ? link : best)).to;
 };
 
+/** Sun and moon on one path each, so the button carries no icon dependency. */
+const ThemeToggle = () => {
+  const { theme, toggle } = useTheme();
+  const dark = theme === 'dark';
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={dark ? 'Switch to light appearance' : 'Switch to dark appearance'}
+      aria-pressed={dark}
+      className="tap grid h-9 w-9 place-items-center rounded-capsule text-label-secondary hover:bg-slate-100 hover:text-label"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[18px] w-[18px]" fill="none">
+        {dark ? (
+          <path
+            d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7Z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ) : (
+          <>
+            <circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="1.6" />
+            <path
+              d="M12 2.8v2.1M12 19.1v2.1M4.3 4.3l1.5 1.5M18.2 18.2l1.5 1.5M2.8 12h2.1M19.1 12h2.1M4.3 19.7l1.5-1.5M18.2 5.8l1.5-1.5"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            />
+          </>
+        )}
+      </svg>
+    </button>
+  );
+};
+
 const SiteHeader = () => {
   const { isAuthenticated, loading, role } = useAuth();
   const { pathname } = useLocation();
@@ -76,13 +119,16 @@ const SiteHeader = () => {
 
   return (
     <header
-      className={`sticky top-0 z-50 bg-white/85 backdrop-blur-lg transition-shadow ${
-        scrolled || menuOpen ? 'border-b border-slate-200/80 shadow-sm' : 'border-b border-transparent'
+      // At the top of the page the bar is weightless; once content slides
+      // beneath it, the separator and shadow fade in to establish the layer.
+      className={`glass sticky top-0 z-50 transition-[box-shadow,border-color] duration-300 ease-cupertino ${
+        scrolled || menuOpen ? 'border-b border-separator' : 'border-b border-transparent'
       }`}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link to="/" className="shrink-0" aria-label="ParKar home">
-          <Brand size="sm" />
+        <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="ParKar home">
+          <BrandMark size="sm" />
+          <BrandWord className="text-lg" />
         </Link>
 
         <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
@@ -92,10 +138,10 @@ const SiteHeader = () => {
                   key={link.to}
                   to={link.to}
                   aria-current={activeLink === link.to ? 'page' : undefined}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  className={`tap rounded-capsule px-3.5 py-2 text-footnote font-medium ${
                     activeLink === link.to
                       ? 'bg-brand-50 text-brand-700'
-                      : 'text-ink-500 hover:bg-slate-100 hover:text-ink-900'
+                      : 'text-label-secondary hover:bg-slate-100 hover:text-label'
                   }`}
                 >
                   {link.label}
@@ -105,14 +151,16 @@ const SiteHeader = () => {
                 <a
                   key={link.hash}
                   href={marketingHref(link.hash)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-ink-700 transition hover:bg-slate-100 hover:text-brand-700"
+                  className="tap rounded-capsule px-3.5 py-2 text-footnote font-medium text-label-secondary hover:bg-slate-100 hover:text-label"
                 >
                   {link.label}
                 </a>
               ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <ThemeToggle />
+
           {loading ? (
             <span aria-hidden="true" className="h-9 w-9 animate-pulse rounded-full bg-slate-200" />
           ) : isAuthenticated ? (
@@ -121,13 +169,13 @@ const SiteHeader = () => {
             <>
               <Link
                 to="/login"
-                className="rounded-lg px-3 py-2 text-sm font-medium text-ink-700 transition hover:bg-slate-100"
+                className="tap rounded-capsule px-3.5 py-2 text-footnote font-medium text-label hover:bg-slate-100"
               >
                 Sign in
               </Link>
               <Link
                 to="/register"
-                className="hidden rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:bg-brand-700 sm:block"
+                className="tap hidden rounded-capsule bg-brand-600 px-4 py-2 text-footnote font-semibold text-white shadow-sm shadow-brand-600/25 hover:bg-brand-700 sm:block"
               >
                 Get started
               </Link>
@@ -139,9 +187,9 @@ const SiteHeader = () => {
             onClick={() => setMenuOpen((open) => !open)}
             aria-expanded={menuOpen}
             aria-label="Toggle navigation"
-            className="rounded-lg p-2 text-ink-500 ring-1 ring-slate-300 transition hover:bg-slate-50 md:hidden"
+            className="tap grid h-9 w-9 place-items-center rounded-capsule text-label-secondary ring-1 ring-separator-strong hover:bg-slate-100 md:hidden"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none">
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[18px] w-[18px]" fill="none">
               <path
                 d={menuOpen ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'}
                 stroke="currentColor"
@@ -154,15 +202,17 @@ const SiteHeader = () => {
       </div>
 
       {menuOpen && (
-        <nav aria-label="Mobile" className="border-t border-slate-100 bg-white px-4 py-2 md:hidden">
+        <nav aria-label="Mobile" className="border-t border-separator px-4 pb-3 pt-2 md:hidden">
           {panelLinks
             ? panelLinks.map((link) => (
                 <Link
                   key={link.to}
                   to={link.to}
                   aria-current={activeLink === link.to ? 'page' : undefined}
-                  className={`block rounded-lg px-3 py-2.5 text-sm font-medium ${
-                    activeLink === link.to ? 'bg-brand-50 text-brand-700' : 'text-ink-700 hover:bg-slate-50'
+                  className={`tap block rounded-control px-3.5 py-2.5 text-footnote font-medium ${
+                    activeLink === link.to
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'text-label hover:bg-slate-100'
                   }`}
                 >
                   {link.label}
@@ -173,7 +223,7 @@ const SiteHeader = () => {
                   key={link.hash}
                   href={marketingHref(link.hash)}
                   onClick={() => setMenuOpen(false)}
-                  className="block rounded-lg px-3 py-2.5 text-sm font-medium text-ink-700 hover:bg-slate-50"
+                  className="tap block rounded-control px-3.5 py-2.5 text-footnote font-medium text-label hover:bg-slate-100"
                 >
                   {link.label}
                 </a>

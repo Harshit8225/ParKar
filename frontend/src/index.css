@@ -1,76 +1,834 @@
+/**
+ * ParKar - "Cupertino Craft" design system.
+ *
+ * The whole token layer lives here; this is the only stylesheet in the project.
+ * Read it in four passes:
+ *
+ *   1. @theme      - what never changes between light and dark (type, radii,
+ *                    easings, fonts) plus the *names* every component uses.
+ *   2. @layer base - the light values, then the dark overrides, then resets.
+ *   3. components  - Liquid Glass, for floating surfaces only.
+ *   4. utilities   - tactility, the eyebrow, hairlines and paint deferral.
+ *
+ * Tailwind v4 inlines @theme values at build time, so a colour that has to flip
+ * between themes cannot live in @theme directly. Every such colour is declared
+ * there as a var() indirection - `--color-surface: var(--surface)` - pointing at
+ * a plain custom property that is redeclared under `.dark`. Static values (a
+ * corner radius, an easing curve) are written into @theme literally.
+ */
+
+@import '@fontsource-variable/inter';
 @import 'tailwindcss';
 
+/**
+ * v4 resolves `dark:` against prefers-color-scheme by default. We drive the
+ * theme from a class instead, because light is the default on a first visit
+ * regardless of what the OS prefers - dark is opt-in. See ThemeContext.jsx.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/**
+ * Fallback face, metric-matched to Inter, and second in the stack below.
+ *
+ * The vertical overrides are Inter's own metrics (unitsPerEm 2816, hhea
+ * ascender 2728, descender 680), so the fallback reserves a line box of exactly
+ * the height Inter will need. That is what holds CLS at zero while the webfont
+ * swaps in: the line box never changes height, so nothing below it moves.
+ *
+ * size-adjust is an approximation for Segoe UI / Roboto and affects horizontal
+ * fit only - re-measure it if you change the local() list.
+ */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Segoe UI'), local('Roboto'), local('Helvetica Neue'), local('Arial');
+  ascent-override: 96.88%;
+  descent-override: 24.15%;
+  line-gap-override: 0%;
+  size-adjust: 107%;
+}
+
+/* ==========================================================================
+   1. @theme - static tokens and the semantic colour names
+   ========================================================================== */
+
 @theme {
-  --color-brand-50: #eef4ff;
-  --color-brand-100: #d9e5ff;
-  --color-brand-200: #bcd1ff;
-  --color-brand-300: #8eb4ff;
-  --color-brand-400: #598bff;
-  --color-brand-500: #3363f7;
-  --color-brand-600: #1f43ec;
-  --color-brand-700: #1a33d4;
-  --color-brand-800: #1c2dab;
-  --color-brand-900: #1d2c87;
+  /* ---- Type ----------------------------------------------------------- */
 
-  /* Accent: the warm half of the ParKar wordmark, used for highlights on dark. */
-  --color-accent-50: #fff7ed;
-  --color-accent-100: #ffedd5;
-  --color-accent-300: #fdba74;
-  --color-accent-400: #fb923c;
-  --color-accent-500: #f97316;
-  --color-accent-600: #ea580c;
-  --color-accent-700: #c2410c;
+  /* 'Inter Variable' is bundled (see the @import above). -apple-system sits
+     next so Apple hardware renders genuine SF Pro rather than a copy of it. */
+  --font-sans:
+    'Inter Variable', 'Inter Fallback', -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  /* Plates, order references and IDs - tabular, never proportional. */
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
 
-  --color-ink-500: #64748b;
-  --color-ink-700: #334155;
-  --color-ink-900: #0f172a;
+  /* Fluid scale. Tracking tightens as size grows and opens up on the small
+     uppercase utility size - the single most Apple-ish typographic move. */
+  --text-display: clamp(2.5rem, 1.75rem + 3.4vw, 4.25rem);
+  --text-display--line-height: 1.02;
+  --text-display--letter-spacing: -0.032em;
+  --text-display--font-weight: 700;
+
+  --text-title-1: clamp(2rem, 1.6rem + 1.8vw, 2.75rem);
+  --text-title-1--line-height: 1.08;
+  --text-title-1--letter-spacing: -0.022em;
+  --text-title-1--font-weight: 700;
+
+  --text-title-2: clamp(1.5rem, 1.35rem + 0.7vw, 1.875rem);
+  --text-title-2--line-height: 1.16;
+  --text-title-2--letter-spacing: -0.018em;
+  --text-title-2--font-weight: 650;
+
+  --text-title-3: 1.3125rem;
+  --text-title-3--line-height: 1.24;
+  --text-title-3--letter-spacing: -0.014em;
+  --text-title-3--font-weight: 600;
+
+  --text-headline: 1.0625rem;
+  --text-headline--line-height: 1.4;
+  --text-headline--letter-spacing: -0.011em;
+  --text-headline--font-weight: 600;
+
+  /* 17px - Apple's body size. Everything long-form uses this. */
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.5;
+  --text-body--letter-spacing: -0.011em;
+
+  --text-callout: 1rem;
+  --text-callout--line-height: 1.45;
+  --text-callout--letter-spacing: -0.008em;
+
+  --text-footnote: 0.8125rem;
+  --text-footnote--line-height: 1.4;
+  --text-footnote--letter-spacing: 0em;
+
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.35;
+  --text-caption--letter-spacing: 0.004em;
+
+  /* Replaces the four ad-hoc tracking values the codebase had grown
+     (0.09em / 0.1em / 0.18em / 0.22em). One eyebrow, everywhere. */
+  --text-eyebrow: 0.6875rem;
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: 0.08em;
+  --text-eyebrow--font-weight: 600;
+
+  /* ---- Concentric radii ----------------------------------------------- */
+
+  /**
+   * Apple's concentric rule: inner = outer - gap. A control sitting inside a
+   * card with 8px between them takes the card's radius minus 8. Follow the
+   * chain and nested corners stay visually parallel instead of drifting.
+   *
+   *   sheet 28  -> card 22 (6 gap)  -> control 14 (8 gap)  -> inner 10 (4 gap)
+   */
+  --radius-sheet: 28px;
+  --radius-card: 22px;
+  --radius-control: 14px;
+  --radius-inner: 10px;
+  --radius-tight: 8px;
+  /* Every primary button, badge and touch target is a capsule. */
+  --radius-capsule: 9999px;
+
+  /* ---- Motion ---------------------------------------------------------- */
+
+  /* The house curve: a near-instant start that decelerates for a long time.
+     This is what makes a sheet feel like it was thrown rather than played. */
+  --ease-cupertino: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-pop: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ---- Spacing --------------------------------------------------------- */
+
+  /* 4px base on an 8px rhythm. v4's default --spacing is already 0.25rem, so
+     p-4 / gap-6 keep working; these exist for use from CSS. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---- Semantic colours (indirections; values in @layer base) ---------- */
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-separator: var(--separator);
+  --color-separator-strong: var(--separator-strong);
+
+  --color-label: var(--label);
+  --color-label-secondary: var(--label-secondary);
+  --color-label-tertiary: var(--label-tertiary);
+  --color-label-quaternary: var(--label-quaternary);
+
+  /* Interaction. Apple calls this the tint; `brand-*` below is its full ramp. */
+  --color-tint: var(--tint);
+  /* Reserved exclusively for parking availability, so "a space is free" never
+     competes visually with "this is tappable". */
+  --color-available: var(--available);
+  /**
+   * Fixed bright accents for the always-dark bands and panels.
+   *
+   * Written as literal values, NOT var() indirections, and that is the whole
+   * point: the surface they sit on is dark in both themes, so these must not
+   * invert. Using emerald-300/amber-100 here put dark green and dark amber
+   * text on a near-black panel the moment dark mode was enabled.
+   */
+  --color-mint: oklch(86% 0.15 162);
+  --color-gold: oklch(90% 0.1 88);
+
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+
+  /* ---- Brand ramp: System Blue ---------------------------------------- */
+
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+
+  /* ---- Accent ramp: System Orange (the "Kar" of the wordmark) ---------- */
+
+  --color-accent-50: var(--accent-50);
+  --color-accent-100: var(--accent-100);
+  --color-accent-200: var(--accent-200);
+  --color-accent-300: var(--accent-300);
+  --color-accent-400: var(--accent-400);
+  --color-accent-500: var(--accent-500);
+  --color-accent-600: var(--accent-600);
+  --color-accent-700: var(--accent-700);
+  --color-accent-800: var(--accent-800);
+  --color-accent-900: var(--accent-900);
+
+  /**
+   * ---- Neutrals: `slate-*` and `ink-*` --------------------------------
+   *
+   * The codebase grew two names for one grey ramp (263 ink-* uses, 187
+   * slate-*). Rather than rewrite 450 call sites, both now resolve to the same
+   * Apple grey ramp, and both *invert* under .dark - see @layer base. That
+   * inversion is what makes pages we have not touched yet legible in dark
+   * mode: `bg-slate-50` becomes a near-black raised surface while
+   * `text-slate-900` becomes near-white, with no change to the markup.
+   *
+   * New code should prefer the semantic names (bg-surface, text-label-secondary).
+   */
+  --color-slate-50: var(--slate-50);
+  --color-slate-100: var(--slate-100);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-500: var(--slate-500);
+  --color-slate-600: var(--slate-600);
+  --color-slate-700: var(--slate-700);
+  --color-slate-800: var(--slate-800);
+  --color-slate-900: var(--slate-900);
+
+  --color-ink-500: var(--slate-500);
+  --color-ink-700: var(--slate-700);
+  --color-ink-900: var(--slate-900);
+
+  /* ---- Status hues ----------------------------------------------------- */
+
+  /* Badges and alerts across all 47 files read these as `bg-emerald-50
+     text-emerald-700 ring-emerald-200`, so the ramps invert like the neutrals
+     do: the tint end goes dark, the shade end goes light. */
+  --color-emerald-50: var(--green-50);
+  --color-emerald-100: var(--green-100);
+  --color-emerald-200: var(--green-200);
+  --color-emerald-300: var(--green-300);
+  --color-emerald-400: var(--green-400);
+  --color-emerald-500: var(--green-500);
+  --color-emerald-600: var(--green-600);
+  --color-emerald-700: var(--green-700);
+  --color-emerald-800: var(--green-800);
+  --color-emerald-900: var(--green-900);
+
+  --color-rose-50: var(--red-50);
+  --color-rose-100: var(--red-100);
+  --color-rose-200: var(--red-200);
+  --color-rose-300: var(--red-300);
+  --color-rose-400: var(--red-400);
+  --color-rose-500: var(--red-500);
+  --color-rose-600: var(--red-600);
+  --color-rose-700: var(--red-700);
+  --color-rose-800: var(--red-800);
+  --color-rose-900: var(--red-900);
+
+  --color-amber-50: var(--orange-50);
+  --color-amber-100: var(--orange-100);
+  --color-amber-200: var(--orange-200);
+  --color-amber-300: var(--orange-300);
+  --color-amber-400: var(--orange-400);
+  --color-amber-500: var(--orange-500);
+  --color-amber-600: var(--orange-600);
+  --color-amber-700: var(--orange-700);
+  --color-amber-800: var(--orange-800);
+  --color-amber-900: var(--orange-900);
+
+  --color-blue-50: var(--brand-50);
+  --color-blue-100: var(--brand-100);
+  --color-blue-200: var(--brand-200);
+  --color-blue-500: var(--brand-500);
+  --color-blue-600: var(--brand-600);
+  --color-blue-700: var(--brand-700);
 }
 
-:root {
-  color-scheme: light;
-}
+/* ==========================================================================
+   2. @layer base - light values, dark overrides, resets
+   ========================================================================== */
 
-html,
-body,
-#root {
-  height: 100%;
-}
+@layer base {
+  /**
+   * Light: clinical, breathable. Labels are opacity tiers over the canvas
+   * rather than separate greys, which is why text stays correct whether it
+   * lands on the canvas, a card, or a sheet.
+   */
+  :root {
+    color-scheme: light;
 
-body {
-  margin: 0;
-  background-color: #f6f7fb;
-  color: var(--color-ink-900);
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
+    --canvas: oklch(96.1% 0.005 286.4); /* #F2F2F7 */
+    --surface: oklch(100% 0 0); /* #FFFFFF */
+    --surface-raised: oklch(100% 0 0);
+    --separator: oklch(0% 0 0 / 0.08);
+    --separator-strong: oklch(0% 0 0 / 0.14);
 
-/* Keyboard focus stays visible everywhere; pointer clicks do not draw a ring. */
-:focus-visible {
-  outline: 2px solid var(--color-brand-500);
-  outline-offset: 2px;
-}
+    --label: oklch(0% 0 0);
+    --label-secondary: oklch(0% 0 0 / 0.55);
+    --label-tertiary: oklch(0% 0 0 / 0.3);
+    --label-quaternary: oklch(0% 0 0 / 0.18);
 
-/* Number inputs: hide the spinners, which are noise on money and duration fields. */
-input[type='number']::-webkit-outer-spin-button,
-input[type='number']::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-input[type='number'] {
-  -moz-appearance: textfield;
-}
+    --tint: oklch(57.2% 0.221 258.3); /* System Blue    #007AFF */
+    --available: oklch(74.9% 0.201 145); /* System Green   #34C759 */
+    --warn: oklch(76.7% 0.171 60.2); /* System Orange  #FF9500 */
+    --danger: oklch(63.7% 0.233 27.5); /* System Red     #FF3B30 */
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    /* Liquid Glass, light: a bright frost that lets the content beneath show
+       through as colour without letting it show through as detail. */
+    --glass-bg: oklch(100% 0 0 / 0.72);
+    --glass-bg-thick: oklch(100% 0 0 / 0.86);
+    --glass-edge: oklch(0% 0 0 / 0.06);
+    --glass-highlight: oklch(100% 0 0 / 0.5);
+    --glass-shadow: oklch(0% 0 0 / 0.16);
+
+    /* System Blue ramp */
+    --brand-50: oklch(96.5% 0.019 250);
+    --brand-100: oklch(92.5% 0.037 250);
+    --brand-200: oklch(85% 0.072 252);
+    --brand-300: oklch(76% 0.116 254);
+    --brand-400: oklch(66.5% 0.172 256);
+    --brand-500: oklch(57.2% 0.221 258.3); /* #007AFF */
+    --brand-600: oklch(51% 0.2 258);
+    --brand-700: oklch(43.5% 0.168 258);
+    --brand-800: oklch(36% 0.135 258);
+    --brand-900: oklch(29.5% 0.102 258);
+
+    /* System Orange ramp */
+    --accent-50: oklch(97.5% 0.019 74);
+    --accent-100: oklch(94% 0.042 76);
+    --accent-200: oklch(89% 0.078 76);
+    --accent-300: oklch(84% 0.115 71);
+    --accent-400: oklch(80.5% 0.148 66);
+    --accent-500: oklch(76.7% 0.171 60.2); /* #FF9500 */
+    --accent-600: oklch(67.5% 0.157 57);
+    --accent-700: oklch(55% 0.128 55);
+    --accent-800: oklch(43% 0.1 55);
+    --accent-900: oklch(32% 0.073 55);
+
+    /* Apple greys */
+    --slate-50: oklch(98.2% 0.003 286);
+    --slate-100: oklch(96.1% 0.005 286.4); /* #F2F2F7 */
+    --slate-200: oklch(92% 0.005 286.4); /* #E5E5EA */
+    --slate-300: oklch(86.2% 0.006 286.3); /* #D1D1D6 */
+    --slate-400: oklch(76.5% 0.006 286.3); /* #AEAEB2 */
+    --slate-500: oklch(65.4% 0.008 286.3); /* #8E8E93 */
+    --slate-600: oklch(50.5% 0.007 286.3); /* #636366 */
+    --slate-700: oklch(40.5% 0.006 286.3); /* #48484A */
+    --slate-800: oklch(34.4% 0.005 286.3); /* #3A3A3C */
+    --slate-900: oklch(22.3% 0.004 286.3); /* #1C1C1E */
+
+    --green-50: oklch(96.5% 0.036 150);
+    --green-100: oklch(92.5% 0.07 150);
+    --green-200: oklch(87% 0.11 148);
+    --green-300: oklch(81% 0.155 146);
+    --green-400: oklch(78% 0.19 145.6);
+    --green-500: oklch(74.9% 0.201 145); /* #34C759 */
+    --green-600: oklch(63% 0.17 146);
+    --green-700: oklch(50% 0.135 147);
+    --green-800: oklch(40% 0.105 148);
+    --green-900: oklch(32% 0.08 149);
+
+    --red-50: oklch(96.5% 0.021 20);
+    --red-100: oklch(93% 0.045 22);
+    --red-200: oklch(87.5% 0.082 24);
+    --red-300: oklch(79% 0.135 26);
+    --red-400: oklch(70.5% 0.19 27);
+    --red-500: oklch(63.7% 0.233 27.5); /* #FF3B30 */
+    --red-600: oklch(56% 0.215 27.5);
+    --red-700: oklch(47% 0.18 28);
+    --red-800: oklch(38.5% 0.145 28);
+    --red-900: oklch(31% 0.115 28);
+
+    --orange-50: oklch(97.5% 0.022 85);
+    --orange-100: oklch(94.5% 0.048 88);
+    --orange-200: oklch(90% 0.09 86);
+    --orange-300: oklch(85% 0.13 80);
+    --orange-400: oklch(80.5% 0.155 70);
+    --orange-500: oklch(76.7% 0.171 60.2);
+    --orange-600: oklch(66% 0.155 55);
+    --orange-700: oklch(53% 0.128 52);
+    --orange-800: oklch(42% 0.1 52);
+    --orange-900: oklch(33% 0.08 52);
+  }
+
+  /**
+   * Dark: OLED-first. The canvas is true black so the panel draws no power and
+   * cards read as genuinely lifted off it, which is the whole point of an
+   * elevated surface on this hardware.
+   *
+   * Accents brighten rather than darken - #007AFF is legible on white but
+   * muddy on black, so it becomes #0A84FF - and the neutral and status ramps
+   * invert, so untouched pages stay readable.
+   */
+  .dark {
+    color-scheme: dark;
+
+    --canvas: oklch(0% 0 0); /* #000000 - true OLED black */
+    --surface: oklch(22.3% 0.004 286.3); /* #1C1C1E */
+    --surface-raised: oklch(29.2% 0.003 286.4); /* #2C2C2E */
+    --separator: oklch(100% 0 0 / 0.1);
+    --separator-strong: oklch(100% 0 0 / 0.18);
+
+    --label: oklch(100% 0 0);
+    --label-secondary: oklch(100% 0 0 / 0.58);
+    --label-tertiary: oklch(100% 0 0 / 0.3);
+    --label-quaternary: oklch(100% 0 0 / 0.16);
+
+    --tint: oklch(60.7% 0.214 257.2); /* System Blue    #0A84FF */
+    --available: oklch(77.8% 0.212 145.6); /* System Green   #30D158 */
+    --warn: oklch(78.9% 0.165 63.1); /* System Orange  #FF9F0A */
+    --danger: oklch(64.6% 0.226 28); /* System Red     #FF453A */
+
+    /* Liquid Glass, dark: a thin white veil, not a grey panel. The blur does
+       the work; opacity this low is what keeps it from looking like plastic. */
+    --glass-bg: oklch(100% 0 0 / 0.06);
+    --glass-bg-thick: oklch(100% 0 0 / 0.1);
+    --glass-edge: oklch(100% 0 0 / 0.08);
+    --glass-highlight: oklch(100% 0 0 / 0.18);
+    --glass-shadow: oklch(0% 0 0 / 0.5);
+
+    /* Brand: the tints (50-200) become deep navies; the shades (600-900)
+       reverse direction so `hover:bg-brand-700` still *lightens*, as it does
+       in every Apple dark UI. */
+    --brand-50: oklch(24% 0.045 258);
+    --brand-100: oklch(29% 0.062 258);
+    --brand-200: oklch(36% 0.085 258);
+    --brand-300: oklch(45% 0.105 258); /* disabled fills */
+    --brand-400: oklch(55% 0.17 257);
+    --brand-500: oklch(60.7% 0.214 257.2); /* #0A84FF */
+    --brand-600: oklch(60.7% 0.214 257.2); /* #0A84FF - primary button */
+    --brand-700: oklch(70% 0.16 256); /* hover: lighter, not darker */
+    --brand-800: oklch(80% 0.11 254);
+    --brand-900: oklch(88% 0.07 252);
+
+    --accent-50: oklch(25% 0.04 65);
+    --accent-100: oklch(30% 0.055 65);
+    --accent-200: oklch(38% 0.08 65);
+    --accent-300: oklch(48% 0.105 64);
+    --accent-400: oklch(72% 0.15 64); /* the wordmark's car glyph */
+    --accent-500: oklch(78.9% 0.165 63.1); /* #FF9F0A */
+    --accent-600: oklch(84% 0.14 66);
+    --accent-700: oklch(89% 0.105 70);
+    --accent-800: oklch(93% 0.075 74);
+    --accent-900: oklch(96% 0.05 78);
+
+    /* Neutrals, inverted: 50 <-> 900. `bg-slate-50` lands on a raised dark
+       surface; `text-slate-900` lands near-white. */
+    --slate-50: oklch(29.2% 0.003 286.4); /* #2C2C2E */
+    --slate-100: oklch(25.5% 0.004 286.3);
+    --slate-200: oklch(32% 0.005 286.3); /* borders */
+    --slate-300: oklch(38.5% 0.005 286.3);
+    --slate-400: oklch(58% 0.007 286.3); /* placeholders */
+    --slate-500: oklch(70% 0.007 286.3); /* secondary text */
+    --slate-600: oklch(79% 0.006 286.3);
+    --slate-700: oklch(88% 0.005 286.3);
+    --slate-800: oklch(94% 0.004 286);
+    --slate-900: oklch(98.5% 0.002 286); /* primary text */
+
+    --green-50: oklch(26% 0.055 150);
+    --green-100: oklch(31% 0.075 149);
+    --green-200: oklch(39% 0.1 148);
+    --green-300: oklch(50% 0.13 147);
+    --green-400: oklch(68% 0.175 146);
+    --green-500: oklch(77.8% 0.212 145.6); /* #30D158 */
+    --green-600: oklch(82% 0.18 146);
+    --green-700: oklch(88% 0.13 147);
+    --green-800: oklch(93% 0.09 148);
+    --green-900: oklch(96% 0.055 149);
+
+    --red-50: oklch(26% 0.06 25);
+    --red-100: oklch(31% 0.08 26);
+    --red-200: oklch(39% 0.11 27);
+    --red-300: oklch(49% 0.15 27);
+    --red-400: oklch(58% 0.2 28);
+    --red-500: oklch(64.6% 0.226 28); /* #FF453A */
+    --red-600: oklch(72% 0.19 28);
+    --red-700: oklch(82% 0.14 29);
+    --red-800: oklch(90% 0.09 30);
+    --red-900: oklch(94% 0.06 30);
+
+    --orange-50: oklch(26% 0.045 70);
+    --orange-100: oklch(31% 0.06 70);
+    --orange-200: oklch(39% 0.085 68);
+    --orange-300: oklch(50% 0.11 66);
+    --orange-400: oklch(68% 0.14 64);
+    --orange-500: oklch(78.9% 0.165 63.1); /* #FF9F0A */
+    --orange-600: oklch(84% 0.14 66);
+    --orange-700: oklch(89% 0.105 70);
+    --orange-800: oklch(93% 0.075 74);
+    --orange-900: oklch(96% 0.05 78);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--canvas);
+    color: var(--label);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.5;
+    letter-spacing: -0.011em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Inter's contextual alternates and disambiguation - a real "1" and "l". */
+    font-feature-settings: 'cv05' 1, 'cv08' 1, 'ss03' 1;
+    /* No horizontal rubber-banding, and stop the theme flipping mid-transition
+       from repainting text as it goes. */
+    overscroll-behavior-x: none;
+  }
+
+  /* Numerals in money, plates, counters and IDs must not dance in width. */
+  code,
+  kbd,
+  samp,
+  pre,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'zero' 1;
+  }
+
+  /* Large text is optically tighter than small text at the same tracking, so
+     headings get the correction once here rather than per component. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.021em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Keyboard focus stays visible everywhere; pointer clicks do not draw a ring. */
+  :focus-visible {
+    outline: 2px solid var(--tint);
+    outline-offset: 2px;
+    border-radius: var(--radius-tight);
+  }
+
+  /* Number inputs: hide the spinners, which are noise on money and duration fields. */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+
+  /* Native controls (date pickers, selects, scrollbars) follow the theme. */
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    letter-spacing: inherit;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--tint) 26%, transparent);
+  }
+
+  /* A hairline scrollbar, so a scrolling card does not gain a grey gutter. */
+  @supports (scrollbar-width: thin) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--label-quaternary) transparent;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-/* ---- Landing hero: neon accents layered over the deck photograph. ---- */
+/* ==========================================================================
+   3. @layer components - Liquid Glass
+   ========================================================================== */
+
+@layer components {
+  /**
+   * Liquid Glass. Floating layers ONLY - the navbar, action sheets, modals, a
+   * card floating over the map. Never the base content layer: glass over glass
+   * has nothing to refract and just reads as fog.
+   *
+   * The depth comes from three stacked insets, not from a border:
+   *   1. a half-pixel highlight along the top edge (light catching the lip),
+   *   2. a half-pixel edge all the way round (the thickness of the material),
+   *   3. a soft ambient shadow below (the gap between it and the content).
+   *
+   * saturate(180%) is the part people miss - it pulls the colour out of
+   * whatever is behind the panel so the glass looks tinted by its
+   * surroundings rather than painted grey.
+   *
+   * Only the standard `backdrop-filter` is written here. Lightning CSS (which
+   * Tailwind v4 runs) adds `-webkit-backdrop-filter` for Safari from the build
+   * targets. Writing both by hand is actively worse: it reads the prefixed one
+   * as the authoritative declaration and drops the standard property, so
+   * Firefox ends up with no blur at all.
+   */
+  .glass {
+    position: relative;
+    isolation: isolate;
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    box-shadow:
+      inset 0 0.5px 0 0 var(--glass-highlight),
+      inset 0 0 0 0.5px var(--glass-edge),
+      0 8px 32px -8px var(--glass-shadow);
+  }
+
+  /* Sheets and modals sit closer to the eye, so the material reads thicker and
+     the shadow throws further. */
+  .glass-thick {
+    position: relative;
+    isolation: isolate;
+    background-color: var(--glass-bg-thick);
+    backdrop-filter: blur(32px) saturate(190%);
+    box-shadow:
+      inset 0 0.5px 0 0 var(--glass-highlight),
+      inset 0 0 0 0.5px var(--glass-edge),
+      0 24px 64px -16px var(--glass-shadow);
+  }
+
+  /* The scrim behind a sheet. Blurring the scrim as well as the sheet is what
+     makes the sheet feel like it is in front of the page, not on it. */
+  .glass-scrim {
+    background-color: color-mix(in oklab, var(--canvas) 45%, transparent);
+    backdrop-filter: blur(4px) saturate(120%);
+  }
+
+  /**
+   * Without backdrop-filter, a translucent panel over text is unreadable, so
+   * fall all the way back to an opaque surface rather than a muddy tint.
+   */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass,
+    .glass-thick {
+      background-color: var(--surface);
+    }
+    .glass-scrim {
+      background-color: color-mix(in oklab, var(--canvas) 80%, transparent);
+    }
+  }
+
+  /**
+   * ---- Dark hero bands ------------------------------------------------
+   *
+   * The wash that grades the deck photograph towards a role's colour. This
+   * existed three times over - HeroScene, HeroBand and the driver Dashboard -
+   * with the alphas drifting between copies (0.95/0.84/0.74 against
+   * 0.94/0.82/0.72). One definition per role now, and the neon strip colour
+   * travels with it as `--band-strip`.
+   *
+   * These bands are dark in BOTH themes: they are photographic, so the
+   * headline over them is white either way.
+   */
+  .band-wash {
+    background-image: var(--band-wash);
+  }
+
+  .band-brand {
+    --band-wash: linear-gradient(
+      110deg,
+      rgb(4 9 26 / 0.95) 0%,
+      rgb(8 20 52 / 0.84) 55%,
+      rgb(6 14 38 / 0.74) 100%
+    );
+    --band-strip: oklch(82% 0.12 205); /* cyan */
+  }
+
+  .band-teal {
+    --band-wash: linear-gradient(
+      110deg,
+      rgb(3 20 26 / 0.95) 0%,
+      rgb(6 38 48 / 0.84) 55%,
+      rgb(5 26 34 / 0.74) 100%
+    );
+    --band-strip: oklch(82% 0.14 165); /* mint */
+  }
+
+  .band-violet {
+    --band-wash: linear-gradient(
+      110deg,
+      rgb(14 7 32 / 0.95) 0%,
+      rgb(28 15 60 / 0.84) 55%,
+      rgb(18 10 42 / 0.74) 100%
+    );
+    --band-strip: oklch(78% 0.15 300); /* violet */
+  }
+
+  /* The lit strip that sweeps across a band, coloured by its role. */
+  .band-strip {
+    background-image: linear-gradient(270deg, transparent, var(--band-strip), rgb(255 255 255 / 0.53));
+  }
+
+  /**
+   * A feature panel that is deliberately dark in BOTH themes - the "how it
+   * works" blocks on the owner and admin home pages, and the camera preview on
+   * the gate terminal.
+   *
+   * This exists because those panels used to be `bg-ink-900 text-white`, and
+   * `ink-900` inverts to near-white under `.dark` (that inversion is what makes
+   * the untouched pages readable). The result was white text on a white panel.
+   * A panel that must not follow the theme has to say so, in one place.
+   */
+  .panel-dark {
+    background-color: oklch(18% 0.004 286.3);
+    color: oklch(100% 0 0);
+  }
+
+  /**
+   * Hands a full-bleed dark band back to the page beneath it. Reads --canvas
+   * rather than a literal off-white, so in dark mode it fades to black instead
+   * of blooming into a grey haze at the bottom of the hero.
+   */
+  .band-fade {
+    background-image: linear-gradient(
+      180deg,
+      transparent 0%,
+      color-mix(in oklab, var(--canvas) 92%, transparent) 82%,
+      var(--canvas) 100%
+    );
+  }
+}
+
+/* ==========================================================================
+   4. @layer utilities
+   ========================================================================== */
+
+@layer utilities {
+  /**
+   * Tactility, in CSS. A press shrinks the element very slightly and springs
+   * back on the house curve - the same 2% Apple uses, which reads as the
+   * surface giving way rather than as an animation.
+   *
+   * Only transform and opacity are touched, so this composites on the GPU and
+   * never triggers layout. No JS, no state, no re-render.
+   */
+  .tap {
+    transition:
+      transform 140ms var(--ease-cupertino),
+      background-color 200ms var(--ease-cupertino),
+      box-shadow 260ms var(--ease-cupertino),
+      opacity 140ms var(--ease-cupertino);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .tap:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  /* Touch devices emulate :hover and then leave it stuck on after a tap, so
+     any lift is gated behind a real pointer. */
+  @media (hover: hover) and (pointer: fine) {
+    .tap-lift:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+  }
+
+  .tap-lift {
+    transition:
+      transform 200ms var(--ease-cupertino),
+      box-shadow 260ms var(--ease-cupertino);
+  }
+
+  .tap-lift:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  /* Small uppercase utility text - section labels, stat captions, table heads. */
+  .eyebrow {
+    font-size: var(--text-eyebrow);
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* A true hairline: 1px is two device pixels on a retina panel and reads as
+     heavy, so separators are drawn at the real device pixel where possible. */
+  .hairline-t {
+    border-top: 1px solid var(--separator);
+  }
+  .hairline-b {
+    border-bottom: 1px solid var(--separator);
+  }
+  @media (min-resolution: 2dppx) {
+    .hairline-t {
+      border-top-width: 0.5px;
+    }
+    .hairline-b {
+      border-bottom-width: 0.5px;
+    }
+  }
+
+  /* Long lists and off-screen sections skip layout and paint until needed.
+     contain-intrinsic-size reserves the space so this cannot cause a shift. */
+  .defer-paint {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 600px;
+  }
+}
+
+/* ==========================================================================
+   Landing hero: neon accents layered over the deck photograph.
+   ========================================================================== */
 
 /* Light bars sweeping along the ceiling of the deck. */
 @keyframes parkar-sweep {
@@ -100,7 +858,9 @@ input[type='number'] {
 
 .parkar-sweep {
   animation: parkar-sweep 9s ease-in-out infinite alternate;
+  will-change: transform, opacity;
 }
 .parkar-pulse {
   animation: parkar-pulse 4s ease-in-out infinite;
+  will-change: opacity;
 }

@@ -2,7 +2,21 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { errorMessage } from '../../api/client';
 import { bookingApi, sessionApi } from '../../api/endpoints';
-import { Alert, Badge, Card, EmptyState, Field, Pagination, Select, Spinner, Table, Td } from '../../components/ui';
+import {
+  Alert,
+  Badge,
+  Card,
+  EmptyState,
+  Field,
+  LinkButton,
+  PageHeader,
+  Pagination,
+  Segmented,
+  Select,
+  Spinner,
+  Table,
+  Td,
+} from '../../components/ui';
 import { dateTime, duration, money, vehicleLabel } from '../../utils/format';
 
 /**
@@ -12,8 +26,8 @@ import { dateTime, duration, money, vehicleLabel } from '../../utils/format';
  */
 
 const TABS = [
-  { key: 'bookings', label: 'Reservations' },
-  { key: 'sessions', label: 'Parking sessions' },
+  { value: 'bookings', label: 'Reservations' },
+  { value: 'sessions', label: 'Parking sessions' },
 ];
 
 const BOOKING_STATUSES = [
@@ -70,44 +84,28 @@ const MyBookings = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-ink-900">My bookings</h1>
-          <p className="text-sm text-ink-500">
-            {tab === 'bookings'
-              ? 'Every reservation you have made, newest first.'
-              : 'Every time your vehicle entered and left a facility.'}
-          </p>
-        </div>
-        <Field label="Filter" className="w-56">
-          <Select value={status} onChange={(event) => setStatus(event.target.value)}>
-            {statuses.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
+      <PageHeader
+        eyebrow="Driver"
+        title="My bookings"
+        subtitle={
+          tab === 'bookings'
+            ? 'Every reservation you have made, newest first.'
+            : 'Every time your vehicle entered and left a facility.'
+        }
+        actions={
+          <Field label="Filter" className="w-56">
+            <Select value={status} onChange={(event) => setStatus(event.target.value)}>
+              {statuses.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        }
+      />
 
-      <div role="tablist" aria-label="History" className="flex gap-1 border-b border-slate-200">
-        {TABS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            role="tab"
-            aria-selected={tab === item.key}
-            onClick={() => switchTab(item.key)}
-            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition ${
-              tab === item.key
-                ? 'border-brand-600 text-brand-700'
-                : 'border-transparent text-ink-500 hover:border-slate-300 hover:text-ink-900'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <Segmented options={TABS} value={tab} onChange={switchTab} />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
 
@@ -124,11 +122,7 @@ const MyBookings = () => {
                   ? 'Book a parking slot and it will show up here.'
                   : 'Your entry and exit record appears here once you have parked.'
             }
-            action={
-              <Link to="/" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
-                Book parking
-              </Link>
-            }
+            action={<LinkButton to="/">Book parking</LinkButton>}
           />
         ) : (
           <>
@@ -136,25 +130,25 @@ const MyBookings = () => {
               <Table headers={['Booking ID', 'Facility', 'Vehicle', 'Booked window', 'Amount', 'Status', '']}>
                 {data.items.map((booking) => (
                   <tr key={booking.id} className="hover:bg-slate-50">
-                    <Td className="font-mono text-xs">{booking.bookingId}</Td>
+                    <Td className="font-mono text-caption">{booking.bookingId}</Td>
                     <Td>
                       <span className="block max-w-[16rem] truncate">{booking.parkingLot?.name || '-'}</span>
-                      <span className="block text-xs text-ink-500">{booking.parkingLot?.city}</span>
+                      <span className="block text-caption text-label-secondary">{booking.parkingLot?.city}</span>
                     </Td>
                     <Td>
-                      <span className="block font-mono text-xs">{booking.vehicleNumber}</span>
-                      <span className="block text-xs text-ink-500">{vehicleLabel(booking.vehicleType)}</span>
+                      <span className="block font-mono text-caption">{booking.vehicleNumber}</span>
+                      <span className="block text-caption text-label-secondary">{vehicleLabel(booking.vehicleType)}</span>
                     </Td>
                     <Td>
-                      <span className="block text-xs">{dateTime(booking.expectedEntryTime)}</span>
-                      <span className="block text-xs text-ink-500">to {dateTime(booking.expectedExitTime)}</span>
+                      <span className="block text-caption">{dateTime(booking.expectedEntryTime)}</span>
+                      <span className="block text-caption text-label-secondary">to {dateTime(booking.expectedExitTime)}</span>
                     </Td>
-                    <Td>{money(booking.pricing?.amount)}</Td>
+                    <Td className="font-medium tabular-nums text-label">{money(booking.pricing?.amount)}</Td>
                     <Td>
                       <Badge status={booking.status} />
                       {booking.fraudFlags?.length > 0 && (
                         <span
-                          className="ml-1 text-xs text-rose-600"
+                          className="ml-1 text-caption text-rose-600"
                           title="A plate mismatch was recorded for this booking"
                         >
                           &#9888;
@@ -164,7 +158,7 @@ const MyBookings = () => {
                     <Td>
                       <Link
                         to={`/app/bookings/${booking.bookingId}`}
-                        className="text-sm font-medium text-brand-700 hover:underline"
+                        className="tap rounded-capsule px-2.5 py-1 text-footnote font-medium text-brand-700 hover:bg-brand-50"
                       >
                         Details
                       </Link>
@@ -176,27 +170,27 @@ const MyBookings = () => {
               <Table headers={['Session', 'Facility', 'Vehicle', 'Entry', 'Exit', 'Parked', 'Overstay', 'Total']}>
                 {data.items.map((session) => (
                   <tr key={session.id} className="hover:bg-slate-50">
-                    <Td className="font-mono text-xs">{session.sessionId}</Td>
+                    <Td className="font-mono text-caption">{session.sessionId}</Td>
                     <Td>
                       <span className="block max-w-[16rem] truncate">{session.parkingLot?.name || '-'}</span>
                     </Td>
                     <Td>
-                      <span className="block font-mono text-xs">{session.vehicleNumber}</span>
-                      <span className="block text-xs text-ink-500">{vehicleLabel(session.vehicleType)}</span>
+                      <span className="block font-mono text-caption">{session.vehicleNumber}</span>
+                      <span className="block text-caption text-label-secondary">{vehicleLabel(session.vehicleType)}</span>
                     </Td>
-                    <Td className="text-xs">{dateTime(session.actualEntryTime)}</Td>
-                    <Td className="text-xs">
+                    <Td className="text-caption">{dateTime(session.actualEntryTime)}</Td>
+                    <Td className="text-caption">
                       {session.actualExitTime ? dateTime(session.actualExitTime) : <Badge status="active">Inside</Badge>}
                     </Td>
-                    <Td>{duration(session.parkedMinutes)}</Td>
-                    <Td>
+                    <Td className="tabular-nums">{duration(session.parkedMinutes)}</Td>
+                    <Td className="tabular-nums">
                       {session.billing?.overstayMinutes > 0 ? (
-                        <span className="text-amber-700">{duration(session.billing.overstayMinutes)}</span>
+                        <span className="font-medium text-amber-700">{duration(session.billing.overstayMinutes)}</span>
                       ) : (
                         '-'
                       )}
                     </Td>
-                    <Td>{money(session.billing?.totalAmount)}</Td>
+                    <Td className="font-medium tabular-nums text-label">{money(session.billing?.totalAmount)}</Td>
                   </tr>
                 ))}
               </Table>

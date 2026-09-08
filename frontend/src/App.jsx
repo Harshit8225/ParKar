@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, homeRouteFor, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 import Landing from './pages/Landing';
 import OwnerLanding from './pages/owner/OwnerLanding';
@@ -61,11 +62,11 @@ const NotFound = () => {
   const { isAuthenticated, role } = useAuth();
   return (
     <div className="flex min-h-full flex-col items-center justify-center gap-3 px-4 py-20 text-center">
-      <p className="text-5xl font-bold text-brand-600">404</p>
-      <h1 className="text-lg font-semibold text-ink-900">This page does not exist</h1>
+      <p className="text-display text-brand-600">404</p>
+      <h1 className="text-title-3 text-label">This page does not exist</h1>
       <a
         href={isAuthenticated ? homeRouteFor(role) : '/'}
-        className="mt-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+        className="tap mt-2 rounded-capsule bg-brand-600 px-5 py-2.5 text-footnote font-semibold text-white shadow-sm shadow-brand-600/25 hover:bg-brand-700"
       >
         Go back
       </a>
@@ -75,68 +76,72 @@ const NotFound = () => {
 
 const App = () => (
   <BrowserRouter>
-    <AuthProvider>
-      <Routes>
-        {/* Home: dispatches to the landing page for whoever is signed in. */}
-        <Route path="/" element={<RoleHome />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+    {/* Theme sits above auth: the appearance is a device preference, not a
+        property of whoever happens to be signed in. */}
+    <ThemeProvider>
+      <AuthProvider>
+        <Routes>
+          {/* Home: dispatches to the landing page for whoever is signed in. */}
+          <Route path="/" element={<RoleHome />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        {/* ---- Driver panel ---- */}
-        <Route
-          path="/app"
-          element={
-            <ProtectedRoute roles={['user']}>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<UserDashboard />} />
-          <Route path="parking/:id" element={<LotDetail />} />
-          <Route path="bookings" element={<MyBookings />} />
-          <Route path="bookings/:id" element={<BookingDetail />} />
-          <Route path="payments" element={<Payments />} />
-          <Route path="profile" element={<UserProfile />} />
-        </Route>
+          {/* ---- Driver panel ---- */}
+          <Route
+            path="/app"
+            element={
+              <ProtectedRoute roles={['user']}>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<UserDashboard />} />
+            <Route path="parking/:id" element={<LotDetail />} />
+            <Route path="bookings" element={<MyBookings />} />
+            <Route path="bookings/:id" element={<BookingDetail />} />
+            <Route path="payments" element={<Payments />} />
+            <Route path="profile" element={<UserProfile />} />
+          </Route>
 
-        {/* ---- Parking owner panel ---- */}
-        <Route
-          path="/owner"
-          element={
-            <ProtectedRoute roles={['owner']}>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<OwnerDashboard />} />
-          <Route path="lots" element={<MyLots />} />
-          <Route path="lots/new" element={<LotForm />} />
-          <Route path="lots/:id" element={<LotManage />} />
-          <Route path="lots/:id/edit" element={<LotForm />} />
-          <Route path="gate" element={<GateTerminal />} />
-          <Route path="profile" element={<OwnerProfile />} />
-        </Route>
+          {/* ---- Parking owner panel ---- */}
+          <Route
+            path="/owner"
+            element={
+              <ProtectedRoute roles={['owner']}>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<OwnerDashboard />} />
+            <Route path="lots" element={<MyLots />} />
+            <Route path="lots/new" element={<LotForm />} />
+            <Route path="lots/:id" element={<LotManage />} />
+            <Route path="lots/:id/edit" element={<LotForm />} />
+            <Route path="gate" element={<GateTerminal />} />
+            <Route path="profile" element={<OwnerProfile />} />
+          </Route>
 
-        {/* ---- Platform admin panel ---- */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute roles={['admin']}>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<AdminDashboard />} />
-          <Route path="facilities" element={<AdminFacilities />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="transactions" element={<AdminTransactions />} />
-          <Route path="activity" element={<AdminActivity />} />
-          <Route path="fraud" element={<AdminFraud />} />
-        </Route>
+          {/* ---- Platform admin panel ---- */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="facilities" element={<AdminFacilities />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="transactions" element={<AdminTransactions />} />
+            <Route path="activity" element={<AdminActivity />} />
+            <Route path="fraud" element={<AdminFraud />} />
+          </Route>
 
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </AuthProvider>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </AuthProvider>
+    </ThemeProvider>
   </BrowserRouter>
 );
 

@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import HeroBand from '../../components/HeroBand';
 import { useAuth } from '../../context/AuthContext';
+import Icon, { IconTile } from '../../components/Icon';
+import { LinkButton } from '../../components/ui';
 
 /**
  * Home page for a parking owner.
@@ -9,26 +11,6 @@ import { useAuth } from '../../context/AuthContext';
  * what the platform does on the owner's behalf and how to get a facility
  * earning - the dashboard at /owner answers "how is it doing right now".
  */
-
-const ICONS = {
-  camera:
-    'M4.5 8.5h3l1.5-2.2h6L16.5 8.5h3A1.5 1.5 0 0 1 21 10v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18v-8a1.5 1.5 0 0 1 1.5-1.5Zm7.5 3.2a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Z',
-  chart: 'M4.5 19.5V10m5 9.5V4.5m5 15V13m5 6.5V7.5',
-  tag: 'M20.5 12.8 12.8 20.5a1.6 1.6 0 0 1-2.3 0L3.5 13.5V4.5a1 1 0 0 1 1-1h9l7 7a1.6 1.6 0 0 1 0 2.3ZM8 8h.01',
-  clock: 'M12 7.5V12l3 2M4.5 12a7.5 7.5 0 1 0 15 0 7.5 7.5 0 0 0-15 0Z',
-  wallet:
-    'M3.5 8A1.5 1.5 0 0 1 5 6.5h12A1.5 1.5 0 0 1 18.5 8m-15 0v10A1.5 1.5 0 0 0 5 19.5h14a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 1 3.5 8Zm13 4.5h.01',
-  shield: 'M12 3.2 5 6v6c0 4.2 2.9 7.3 7 8.8 4.1-1.5 7-4.6 7-8.8V6l-7-2.8Zm-2.4 8.6 2 2 3.4-3.6',
-  mail: 'M3.5 7.5h17v9a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5v-9Zm0 .5 8.5 6 8.5-6',
-  phone:
-    'M7 3.5 9.5 8 7.8 9.8a12 12 0 0 0 4.4 4.4L14 12.5l4.5 2.5v3.5A1.5 1.5 0 0 1 17 20C10.4 19.4 4.6 13.6 4 7a1.5 1.5 0 0 1 1.5-1.6H7V3.5Z',
-};
-
-const Icon = ({ name, className = 'h-5 w-5' }) => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none">
-    <path d={ICONS[name]} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
 
 const CAPABILITIES = [
   {
@@ -121,18 +103,12 @@ const OwnerLanding = () => {
         title={firstName ? `Welcome back, ${firstName}` : 'Run your parking, not your barrier'}
         actions={
           <>
-            <Link
-              to="/owner"
-              className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-ink-900 shadow-lg shadow-black/20 transition hover:bg-slate-100"
-            >
+            <LinkButton to="/owner" tone="light" size="lg">
               Open dashboard
-            </Link>
-            <Link
-              to="/owner/lots/new"
-              className="rounded-xl px-5 py-3 text-sm font-semibold text-white ring-1 ring-inset ring-white/30 transition hover:bg-white/10"
-            >
+            </LinkButton>
+            <LinkButton to="/owner/lots/new" tone="ghostLight" size="lg">
               Register a facility
-            </Link>
+            </LinkButton>
           </>
         }
       >
@@ -146,11 +122,11 @@ const OwnerLanding = () => {
       {/* ---- What the platform does on the owner's behalf ---- */}
       <section className="mt-12">
         <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-600">What ParKar runs for you</p>
-          <h2 className="mt-3 text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">
+          <p className="eyebrow text-accent-600">What ParKar runs for you</p>
+          <h2 className="mt-3.5 text-title-1 text-label">
             The work between a booking and a barrier
           </h2>
-          <p className="mt-3 text-sm leading-relaxed text-ink-500">
+          <p className="mt-3 text-footnote leading-relaxed text-label-secondary">
             Most of what follows happens without anyone on site touching it. Knowing where the seams are is what lets
             you price and staff a facility well.
           </p>
@@ -160,44 +136,44 @@ const OwnerLanding = () => {
           {CAPABILITIES.map((item) => (
             <article
               key={item.title}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+              className="tap-lift rounded-card border border-separator bg-surface p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:border-emerald-200 hover:shadow-[0_2px_4px_rgba(0,0,0,0.05),0_12px_32px_-12px_rgba(0,0,0,0.18)]"
             >
-              <span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
-                <Icon name={item.icon} className="h-6 w-6" />
-              </span>
-              <h3 className="mt-4 text-base font-semibold text-ink-900">{item.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-500">{item.copy}</p>
+              <IconTile name={item.icon} tone="available" size="lg" />
+              <h3 className="mt-5 text-title-3 text-label">{item.title}</h3>
+              <p className="mt-2 text-footnote leading-relaxed text-label-secondary">{item.copy}</p>
             </article>
           ))}
         </div>
       </section>
 
       {/* ---- Getting a facility earning ---- */}
-      <section className="mt-14 overflow-hidden rounded-3xl bg-ink-900 p-6 text-white sm:p-10">
+      <section className="mt-14 overflow-hidden panel-dark rounded-sheet p-6 sm:p-10">
         <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">From empty lot to earning</p>
-          <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">Four steps, once per facility</h2>
+          <p className="eyebrow text-mint">From empty lot to earning</p>
+          <h2 className="mt-3.5 text-title-1">Four steps, once per facility</h2>
         </div>
 
         <ol className="mt-9 grid gap-5 sm:grid-cols-2">
           {STEPS.map((step, index) => (
             <li
               key={step.title}
-              className="flex flex-col rounded-2xl bg-white/5 p-6 ring-1 ring-inset ring-white/10 transition hover:bg-white/[0.08]"
+              className="flex flex-col rounded-card bg-white/5 p-6 ring-1 ring-inset ring-white/10 transition-colors duration-200 ease-cupertino hover:bg-white/[0.08]"
             >
               <div className="flex items-center gap-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-400 text-sm font-bold text-ink-900">
+                {/* On a panel that is dark in both themes, the numeral needs a
+                    colour that does not invert - hence the literal. */}
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-capsule bg-mint text-footnote font-bold text-[#1C1C1E]">
                   {index + 1}
                 </span>
-                <h3 className="text-base font-semibold">{step.title}</h3>
+                <h3 className="text-title-3">{step.title}</h3>
               </div>
-              <p className="mt-3 flex-1 text-sm leading-relaxed text-white/70">{step.copy}</p>
+              <p className="mt-3.5 flex-1 text-footnote leading-relaxed text-white/70">{step.copy}</p>
               <Link
                 to={step.to}
-                className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-emerald-300 transition hover:text-emerald-200"
+                className="tap mt-5 -ml-2 inline-flex w-fit items-center gap-1.5 rounded-capsule px-2 py-1 text-footnote font-semibold text-mint hover:bg-white/10"
               >
                 {step.action}
-                <span aria-hidden="true">&rarr;</span>
+                <Icon name="forward" size={3.5} />
               </Link>
             </li>
           ))}
@@ -207,11 +183,11 @@ const OwnerLanding = () => {
       {/* ---- Reading the numbers ---- */}
       <section className="mt-14">
         <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-600">Reading your dashboard</p>
-          <h2 className="mt-3 text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">
+          <p className="eyebrow text-accent-600">Reading your dashboard</p>
+          <h2 className="mt-3.5 text-title-1 text-label">
             What each number is actually telling you
           </h2>
-          <p className="mt-3 text-sm leading-relaxed text-ink-500">
+          <p className="mt-3 text-footnote leading-relaxed text-label-secondary">
             The dashboard reports these for any date range. The interpretation is the part that is easy to get wrong.
           </p>
         </div>
@@ -219,46 +195,46 @@ const OwnerLanding = () => {
         <dl className="mt-9 grid gap-x-10 gap-y-7 md:grid-cols-2">
           {SIGNALS.map((signal) => (
             <div key={signal.metric} className="border-l-2 border-emerald-300 pl-5">
-              <dt className="text-sm font-semibold text-ink-900">{signal.metric}</dt>
-              <dd className="mt-1.5 text-sm leading-relaxed text-ink-500">{signal.reading}</dd>
+              <dt className="text-footnote font-semibold text-label">{signal.metric}</dt>
+              <dd className="mt-1.5 text-footnote leading-relaxed text-label-secondary">{signal.reading}</dd>
             </div>
           ))}
         </dl>
 
         <Link
           to="/owner"
-          className="mt-9 inline-flex items-center gap-2 rounded-xl bg-ink-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+          className="mt-9 inline-flex items-center gap-2 panel-dark tap rounded-capsule px-5 py-3 text-footnote font-semibold hover:opacity-90"
         >
           See these for my facilities
-          <span aria-hidden="true">&rarr;</span>
+          <Icon name="forward" size={3.5} />
         </Link>
       </section>
 
       {/* ---- Owner support ---- */}
-      <section className="mt-14 rounded-3xl border border-slate-200 bg-white p-6 sm:p-10">
+      <section className="mt-14 rounded-sheet border border-separator bg-surface p-6 sm:p-10">
         <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-600">Owner support</p>
-            <h2 className="mt-3 text-2xl font-bold tracking-tight text-ink-900">Something wrong on site?</h2>
-            <p className="mt-3 text-sm leading-relaxed text-ink-500">
+            <p className="eyebrow text-accent-600">Owner support</p>
+            <h2 className="mt-3.5 text-title-2 text-label">Something wrong on site?</h2>
+            <p className="mt-3 text-footnote leading-relaxed text-label-secondary">
               Barrier stuck, camera offline, or a booking that will not verify? The owner line is staffed during
               facility hours and can release a barrier remotely while you sort the hardware.
             </p>
 
             <ul className="mt-6 space-y-3">
               <li className="flex items-center gap-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-ink-700">
-                  <Icon name="phone" className="h-4 w-4" />
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-control bg-slate-100 text-label-secondary">
+                  <Icon name="phone" size={4} />
                 </span>
-                <a href="tel:+918047182200" className="text-sm font-medium text-ink-900 hover:text-emerald-700">
+                <a href="tel:+918047182200" className="text-footnote font-medium text-label hover:text-emerald-700">
                   +91 80 4718 2200
                 </a>
               </li>
               <li className="flex items-center gap-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-ink-700">
-                  <Icon name="mail" className="h-4 w-4" />
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-control bg-slate-100 text-label-secondary">
+                  <Icon name="mail" size={4} />
                 </span>
-                <a href="mailto:owners@parkar.app" className="text-sm font-medium text-ink-900 hover:text-emerald-700">
+                <a href="mailto:owners@parkar.app" className="text-footnote font-medium text-label hover:text-emerald-700">
                   owners@parkar.app
                 </a>
               </li>
@@ -284,9 +260,9 @@ const OwnerLanding = () => {
                 a: 'The admin leaves a reason on the listing. Fix what it names and the facility goes back into the queue automatically.',
               },
             ].map((item) => (
-              <div key={item.q} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-ink-900">{item.q}</p>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-500">{item.a}</p>
+              <div key={item.q} className="rounded-control border border-separator bg-slate-50 p-4">
+                <p className="text-footnote font-semibold text-label">{item.q}</p>
+                <p className="mt-1.5 text-footnote leading-relaxed text-label-secondary">{item.a}</p>
               </div>
             ))}
           </div>

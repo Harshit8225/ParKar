@@ -3,9 +3,26 @@ import { Link, useParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { errorMessage } from '../../api/client';
 import { analyticsApi, bookingApi, parkingApi, paymentApi, recognitionApi, sessionApi } from '../../api/endpoints';
-import { Alert, Badge, Button, Card, EmptyState, Field, Pagination, Select, Spinner, StatCard, Table, Td } from '../../components/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  LinkButton,
+  Pagination,
+  Segmented,
+  Select,
+  Spinner,
+  StatCard,
+  Table,
+  Td,
+} from '../../components/ui';
 import PricingRules from './PricingRules';
 import { dateTime, duration, money, percent, statusLabel, vehicleLabel } from '../../utils/format';
+import Icon from '../../components/Icon';
+import { axisTick, gridStroke, series, tooltipLabelStyle, tooltipStyle } from '../../utils/chartTheme';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -15,8 +32,6 @@ const TABS = [
   { key: 'pricing', label: 'Dynamic pricing' },
   { key: 'gate', label: 'Gate events' },
 ];
-
-const chartAxis = { stroke: '#94a3b8', fontSize: 11 };
 
 const LotManage = () => {
   const { id } = useParams();
@@ -62,17 +77,21 @@ const LotManage = () => {
 
   return (
     <div className="space-y-6">
-      <Link to="/owner/lots" className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
-        &larr; Back to my facilities
+      <Link
+        to="/owner/lots"
+        className="tap -ml-2 inline-flex w-fit items-center gap-1 rounded-capsule px-2 py-1 text-footnote font-medium text-brand-700 hover:bg-brand-50"
+      >
+        <Icon name="back" size={4} />
+        Back to my facilities
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold text-ink-900">{lot.name}</h1>
+            <h1 className="text-title-2 text-label">{lot.name}</h1>
             <Badge status={lot.status} />
           </div>
-          <p className="mt-1 text-sm text-ink-500">
+          <p className="mt-1 text-footnote text-label-secondary">
             {lot.location.address}, {lot.location.city}
           </p>
         </div>
@@ -80,9 +99,9 @@ const LotManage = () => {
           <Button tone="secondary" onClick={recount}>
             Recompute counters
           </Button>
-          <Link to={`/owner/lots/${id}/edit`} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
+          <LinkButton to={`/owner/lots/${id}/edit`} icon="pencil">
             Edit facility
-          </Link>
+          </LinkButton>
         </div>
       </div>
 
@@ -95,21 +114,12 @@ const LotManage = () => {
       {notice && <Alert kind="success" onDismiss={() => setNotice('')}>{notice}</Alert>}
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
 
-      <nav className="flex flex-wrap gap-1 border-b border-slate-200" aria-label="Facility sections">
-        {TABS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => setTab(item.key)}
-            aria-current={tab === item.key ? 'page' : undefined}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition ${
-              tab === item.key ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-900'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
+      <Segmented
+        options={TABS.map((item) => ({ value: item.key, label: item.label }))}
+        value={tab}
+        onChange={setTab}
+        className="max-w-full overflow-x-auto"
+      />
 
       {tab === 'overview' && <Overview lot={lot} analytics={analytics} />}
       {tab === 'reservations' && <Reservations lotId={id} />}
@@ -147,24 +157,24 @@ const Overview = ({ lot, analytics }) => (
             const reserved = lot.reserved[type];
             return (
               <div key={type}>
-                <div className="flex items-baseline justify-between text-sm">
-                  <span className="font-medium text-ink-900">{vehicleLabel(type)}</span>
-                  <span className="text-ink-500">
+                <div className="flex items-baseline justify-between text-footnote">
+                  <span className="font-medium text-label">{vehicleLabel(type)}</span>
+                  <span className="text-label-secondary">
                     {occupied} parked + {reserved} reserved of {capacity}
                   </span>
                 </div>
-                <div className="mt-1.5 flex h-2.5 overflow-hidden rounded-full bg-slate-100">
+                <div className="mt-1.5 flex h-2.5 overflow-hidden rounded-capsule bg-slate-100">
                   <span className="block bg-brand-600" style={{ width: `${(occupied / capacity) * 100}%` }} title="Parked" />
                   <span className="block bg-amber-400" style={{ width: `${(reserved / capacity) * 100}%` }} title="Reserved" />
                 </div>
-                <p className="mt-1 text-xs text-ink-500">
+                <p className="mt-1 text-caption text-label-secondary">
                   Base rate {money(lot.hourlyRate[type])}/hr &middot; {lot.available[type]} free
                 </p>
               </div>
             );
           })}
         </div>
-        <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-xs text-ink-500">
+        <div className="mt-4 flex gap-4 border-t border-separator pt-3 text-caption text-label-secondary">
           <span className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded bg-brand-600" /> Parked
           </span>
@@ -175,7 +185,7 @@ const Overview = ({ lot, analytics }) => (
       </Card>
 
       <Card title="Configuration">
-        <dl className="space-y-2 text-sm">
+        <dl className="space-y-2 text-footnote">
           {[
             ['Operating hours', lot.operatingHours.is24x7 ? '24/7' : `${lot.operatingHours.openTime} - ${lot.operatingHours.closeTime}`],
             ['Dynamic pricing', lot.pricing?.dynamicPricingEnabled ? 'Enabled' : 'Disabled'],
@@ -186,9 +196,9 @@ const Overview = ({ lot, analytics }) => (
             ['EV charging', lot.amenities.evCharging ? 'Available' : 'Not available'],
             ['Rating', lot.rating.count ? `${lot.rating.average.toFixed(1)} from ${lot.rating.count} reviews` : 'No reviews yet'],
           ].map(([label, value]) => (
-            <div key={label} className="flex justify-between gap-4 border-b border-slate-100 pb-1.5 last:border-0">
-              <dt className="text-ink-500">{label}</dt>
-              <dd className="text-right font-medium text-ink-900">{value}</dd>
+            <div key={label} className="flex justify-between gap-4 border-b border-separator pb-1.5 last:border-0">
+              <dt className="text-label-secondary">{label}</dt>
+              <dd className="text-right font-medium text-label">{value}</dd>
             </div>
           ))}
         </dl>
@@ -201,11 +211,11 @@ const Overview = ({ lot, analytics }) => (
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={analytics.dailySeries} margin={{ top: 5, right: 10, bottom: 0, left: -15 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="date" tick={chartAxis} tickFormatter={(value) => value.slice(5)} />
-                <YAxis tick={chartAxis} />
-                <Tooltip formatter={(value) => money(value)} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                <Line type="monotone" dataKey="revenue" stroke="#1f43ec" strokeWidth={2} dot={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="date" tick={axisTick} tickFormatter={(value) => value.slice(5)} />
+                <YAxis tick={axisTick} />
+                <Tooltip formatter={(value) => money(value)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
+                <Line type="monotone" dataKey="revenue" stroke={series[0]} strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -214,11 +224,11 @@ const Overview = ({ lot, analytics }) => (
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={analytics.peakHours} margin={{ top: 5, right: 5, bottom: 0, left: -25 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="hour" tick={chartAxis} interval={3} />
-                <YAxis tick={chartAxis} allowDecimals={false} />
-                <Tooltip labelFormatter={(hour) => `${String(hour).padStart(2, '0')}:00`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                <Bar dataKey="entries" fill="#598bff" radius={[3, 3, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="hour" tick={axisTick} interval={3} />
+                <YAxis tick={axisTick} allowDecimals={false} />
+                <Tooltip labelFormatter={(hour) => `${String(hour).padStart(2, '0')}:00`} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
+                <Bar dataKey="entries" fill={series[0]} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -292,18 +302,18 @@ const Reservations = ({ lotId }) => {
           <Table headers={['Booking', 'Driver', 'Vehicle', 'Entry window', 'Duration', 'Amount', 'Status']}>
             {items.map((booking) => (
               <tr key={booking.id} className="hover:bg-slate-50">
-                <Td className="font-mono text-xs">{booking.bookingId}</Td>
+                <Td className="font-mono text-caption">{booking.bookingId}</Td>
                 <Td>
                   <span className="block max-w-[12rem] truncate">{booking.user?.name || '-'}</span>
-                  <span className="block max-w-[12rem] truncate text-xs text-ink-500">{booking.user?.email}</span>
+                  <span className="block max-w-[12rem] truncate text-caption text-label-secondary">{booking.user?.email}</span>
                 </Td>
                 <Td>
-                  <span className="block font-mono text-xs">{booking.vehicleNumber}</span>
-                  <span className="block text-xs text-ink-500">{vehicleLabel(booking.vehicleType)}</span>
+                  <span className="block font-mono text-caption">{booking.vehicleNumber}</span>
+                  <span className="block text-caption text-label-secondary">{vehicleLabel(booking.vehicleType)}</span>
                 </Td>
                 <Td>
-                  <span className="block text-xs">{dateTime(booking.expectedEntryTime)}</span>
-                  <span className="block text-xs text-ink-500">to {dateTime(booking.expectedExitTime)}</span>
+                  <span className="block text-caption">{dateTime(booking.expectedEntryTime)}</span>
+                  <span className="block text-caption text-label-secondary">to {dateTime(booking.expectedExitTime)}</span>
                 </Td>
                 <Td>{booking.durationHours}h</Td>
                 <Td>{money(booking.pricing?.amount)}</Td>
@@ -354,10 +364,10 @@ const Sessions = ({ lotId }) => {
           <Table headers={['Session', 'Vehicle', 'Driver', 'Entry', 'Booked exit', 'Parked', 'Overstay', 'Due']}>
             {items.map((session) => (
               <tr key={session.id} className={session.isOverstaying ? 'bg-amber-50' : 'hover:bg-slate-50'}>
-                <Td className="font-mono text-xs">{session.sessionId}</Td>
+                <Td className="font-mono text-caption">{session.sessionId}</Td>
                 <Td>
-                  <span className="block font-mono text-xs">{session.vehicleNumber}</span>
-                  <span className="block text-xs text-ink-500">{vehicleLabel(session.vehicleType)}</span>
+                  <span className="block font-mono text-caption">{session.vehicleNumber}</span>
+                  <span className="block text-caption text-label-secondary">{vehicleLabel(session.vehicleType)}</span>
                 </Td>
                 <Td>
                   <span className="block max-w-[12rem] truncate">{session.user?.name || '-'}</span>
@@ -418,12 +428,12 @@ const Transactions = ({ lotId }) => {
             <Table headers={['Transaction', 'Date', 'Driver', 'Booking', 'Purpose', 'Amount', 'Commission', 'Your share', 'Status']}>
               {items.map((txn) => (
                 <tr key={txn.id} className="hover:bg-slate-50">
-                  <Td className="font-mono text-xs">{txn.transactionId}</Td>
+                  <Td className="font-mono text-caption">{txn.transactionId}</Td>
                   <Td>{dateTime(txn.createdAt)}</Td>
                   <Td>
                     <span className="block max-w-[10rem] truncate">{txn.user?.name || '-'}</span>
                   </Td>
-                  <Td className="font-mono text-xs">{txn.booking?.bookingId || '-'}</Td>
+                  <Td className="font-mono text-caption">{txn.booking?.bookingId || '-'}</Td>
                   <Td>{statusLabel(txn.purpose)}</Td>
                   <Td className="font-medium">{money(txn.amount)}</Td>
                   <Td className="text-amber-700">{money(txn.settlement?.platformCommission)}</Td>
@@ -448,8 +458,8 @@ const RESULT_TONE = {
   no_booking: 'bg-amber-50 text-amber-700 ring-amber-200',
   no_active_session: 'bg-rose-50 text-rose-700 ring-rose-200',
   outside_entry_window: 'bg-amber-50 text-amber-700 ring-amber-200',
-  unreadable_plate: 'bg-slate-100 text-slate-600 ring-slate-200',
-  duplicate_event: 'bg-slate-100 text-slate-600 ring-slate-200',
+  unreadable_plate: 'bg-slate-100 text-label-secondary ring-separator',
+  duplicate_event: 'bg-slate-100 text-label-secondary ring-separator',
 };
 
 const GateEvents = ({ lotId }) => {
@@ -485,18 +495,18 @@ const GateEvents = ({ lotId }) => {
               <tr key={event._id} className={event.flaggedAsFraud ? 'bg-rose-50' : 'hover:bg-slate-50'}>
                 <Td>{dateTime(event.createdAt)}</Td>
                 <Td>
-                  <Badge tone={event.eventType === 'entry' ? 'bg-brand-50 text-brand-700 ring-brand-200' : 'bg-slate-100 text-slate-600 ring-slate-200'}>
+                  <Badge tone={event.eventType === 'entry' ? 'bg-brand-50 text-brand-700 ring-brand-200' : 'bg-slate-100 text-label-secondary ring-separator'}>
                     {statusLabel(event.eventType)}
                   </Badge>
                 </Td>
-                <Td className="font-mono text-xs">{event.recognizedPlate || '-'}</Td>
+                <Td className="font-mono text-caption">{event.recognizedPlate || '-'}</Td>
                 <Td>{event.confidence !== undefined ? `${(event.confidence * 100).toFixed(0)}%` : '-'}</Td>
                 <Td>
                   <Badge tone={RESULT_TONE[event.result]}>{statusLabel(event.result)}</Badge>
                 </Td>
-                <Td className="font-mono text-xs">{event.booking?.bookingId || '-'}</Td>
+                <Td className="font-mono text-caption">{event.booking?.bookingId || '-'}</Td>
                 <Td>
-                  <span className="block max-w-[20rem] truncate text-xs text-ink-500" title={event.message}>
+                  <span className="block max-w-[20rem] truncate text-caption text-label-secondary" title={event.message}>
                     {event.message}
                   </span>
                 </Td>

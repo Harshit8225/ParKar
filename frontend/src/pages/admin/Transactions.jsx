@@ -9,6 +9,7 @@ import {
   EmptyState,
   Field,
   Input,
+  PageHeader,
   Pagination,
   Select,
   Spinner,
@@ -68,10 +69,7 @@ const Transactions = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-ink-900">Transactions</h1>
-        <p className="text-sm text-ink-500">Every payment on the platform, with the commission split recorded at capture time.</p>
-      </div>
+      <PageHeader eyebrow="Platform admin" title="Transactions" subtitle="Every payment on the platform, with the commission split recorded at capture time." />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
       {notice && <Alert kind="info" onDismiss={() => setNotice('')}>{notice}</Alert>}
@@ -101,7 +99,7 @@ const Transactions = () => {
             Clear per-facility overrides
           </Button>
         </div>
-        <p className="mt-2 text-xs text-ink-500">
+        <p className="mt-2 text-caption text-label-secondary">
           The platform-wide default itself is set with the <code>PLATFORM_COMMISSION_PERCENT</code> environment variable.
           Per-facility rates are set when approving a facility.
         </p>
@@ -146,7 +144,7 @@ const Transactions = () => {
             >
               {data.items.map((txn) => (
                 <tr key={txn._id} className="hover:bg-slate-50">
-                  <Td className="font-mono text-xs">{txn.transactionId}</Td>
+                  <Td className="font-mono text-caption">{txn.transactionId}</Td>
                   <Td>{dateTime(txn.createdAt)}</Td>
                   <Td>
                     <span className="block max-w-[10rem] truncate">{txn.user?.name || '-'}</span>
@@ -154,7 +152,7 @@ const Transactions = () => {
                   <Td>
                     <span className="block max-w-[12rem] truncate">{txn.parkingLot?.name || '-'}</span>
                   </Td>
-                  <Td className="font-mono text-xs">{txn.booking?.bookingId || '-'}</Td>
+                  <Td className="font-mono text-caption">{txn.booking?.bookingId || '-'}</Td>
                   <Td>{statusLabel(txn.purpose)}</Td>
                   <Td className="font-medium">{money(txn.amount)}</Td>
                   <Td className="text-emerald-700">{money(txn.settlement?.platformCommission)}</Td>
@@ -162,7 +160,7 @@ const Transactions = () => {
                   <Td>
                     <Badge status={txn.status} />
                     {txn.failureReason && (
-                      <span className="mt-0.5 block max-w-[10rem] truncate text-xs text-rose-600" title={txn.failureReason}>
+                      <span className="mt-0.5 block max-w-[10rem] truncate text-caption text-rose-600" title={txn.failureReason}>
                         {txn.failureReason}
                       </span>
                     )}

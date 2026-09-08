@@ -5,6 +5,7 @@ import { bookingApi, parkingApi, paymentApi, pricingApi } from '../../api/endpoi
 import { Alert, Badge, Button, Card, Field, Input, KeyValue, Select, Spinner } from '../../components/ui';
 import { useCheckout } from '../../hooks/useCheckout';
 import { money, timeOnly, toLocalInputValue, vehicleLabel } from '../../utils/format';
+import Icon from '../../components/Icon';
 
 const DURATIONS = [1, 2, 3, 4, 6, 8, 12, 24];
 
@@ -150,8 +151,12 @@ const LotDetail = () => {
 
   return (
     <div className="space-y-6">
-      <Link to="/" className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
-        &larr; Back to search
+      <Link
+        to="/"
+        className="tap -ml-2 inline-flex w-fit items-center gap-1 rounded-capsule px-2 py-1 text-footnote font-medium text-brand-700 hover:bg-brand-50"
+      >
+        <Icon name="back" size={4} />
+        Back to search
       </Link>
 
       <div className="grid gap-6 lg:grid-cols-5">
@@ -160,50 +165,50 @@ const LotDetail = () => {
           <Card>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="text-xl font-semibold text-ink-900">{lot.name}</h1>
-                <p className="mt-1 text-sm text-ink-500">
+                <h1 className="text-title-2 text-label">{lot.name}</h1>
+                <p className="mt-1 text-footnote text-label-secondary">
                   {lot.location.address}, {lot.location.city} {lot.location.pincode}
                 </p>
               </div>
               {lot.rating.count > 0 && (
-                <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700">
+                <span className="rounded-control bg-amber-50 px-3 py-1.5 text-footnote font-semibold text-amber-700">
                   {lot.rating.average.toFixed(1)} &#9733;
-                  <span className="ml-1 text-xs font-normal">({lot.rating.count})</span>
+                  <span className="ml-1 text-caption font-normal">({lot.rating.count})</span>
                 </span>
               )}
             </div>
 
-            {lot.description && <p className="mt-3 text-sm text-ink-700">{lot.description}</p>}
+            {lot.description && <p className="mt-3 text-footnote text-label">{lot.description}</p>}
 
             <div className="mt-4 flex flex-wrap gap-1.5">
               {lot.operatingHours.is24x7 ? (
                 <Badge tone="bg-brand-50 text-brand-700 ring-brand-200">Open 24/7</Badge>
               ) : (
-                <Badge tone={lot.isOpenNow ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-slate-200'}>
+                <Badge tone={lot.isOpenNow ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-slate-100 text-label-secondary ring-separator'}>
                   {lot.operatingHours.openTime} - {lot.operatingHours.closeTime}
                 </Badge>
               )}
               {lot.amenities.evCharging && <Badge tone="bg-emerald-50 text-emerald-700 ring-emerald-200">EV charging</Badge>}
-              {lot.amenities.covered && <Badge tone="bg-slate-100 text-slate-600 ring-slate-200">Covered</Badge>}
-              {lot.amenities.security && <Badge tone="bg-slate-100 text-slate-600 ring-slate-200">Security</Badge>}
-              {lot.amenities.cctv && <Badge tone="bg-slate-100 text-slate-600 ring-slate-200">CCTV</Badge>}
+              {lot.amenities.covered && <Badge tone="bg-slate-100 text-label-secondary ring-separator">Covered</Badge>}
+              {lot.amenities.security && <Badge tone="bg-slate-100 text-label-secondary ring-separator">Security</Badge>}
+              {lot.amenities.cctv && <Badge tone="bg-slate-100 text-label-secondary ring-separator">CCTV</Badge>}
             </div>
 
-            <div className="mt-5 grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
+            <div className="mt-5 grid gap-4 border-t border-separator pt-4 sm:grid-cols-2">
               {['two_wheeler', 'four_wheeler'].map((type) =>
                 lot.capacity[type] > 0 ? (
-                  <div key={type} className="rounded-lg bg-slate-50 p-4">
-                    <p className="text-sm font-medium text-ink-900">{vehicleLabel(type)}</p>
-                    <p className="mt-1 text-2xl font-semibold text-ink-900">
+                  <div key={type} className="rounded-control bg-slate-50 p-4">
+                    <p className="text-footnote font-medium text-label">{vehicleLabel(type)}</p>
+                    <p className="mt-1 text-title-2 tabular-nums text-label">
                       {money(lot.indicativeRates?.[type]?.currentRatePerHour ?? lot.hourlyRate[type])}
-                      <span className="text-sm font-normal text-ink-500">/hr</span>
+                      <span className="text-footnote font-normal text-label-secondary">/hr</span>
                     </p>
                     {lot.indicativeRates?.[type]?.multiplier > 1 && (
-                      <p className="text-xs text-amber-700">
+                      <p className="text-caption text-amber-700">
                         Base {money(lot.hourlyRate[type])} &times; {lot.indicativeRates[type].multiplier} (demand)
                       </p>
                     )}
-                    <p className="mt-2 text-sm text-ink-500">
+                    <p className="mt-2 text-footnote text-label-secondary">
                       <span className={lot.available[type] > 0 ? 'font-semibold text-emerald-600' : 'font-semibold text-rose-600'}>
                         {lot.available[type]}
                       </span>{' '}
@@ -214,7 +219,7 @@ const LotDetail = () => {
               )}
             </div>
 
-            <div className="mt-4 border-t border-slate-100 pt-4">
+            <div className="mt-4 border-t border-separator pt-4">
               <KeyValue
                 rows={[
                   { label: 'Contact', value: lot.contact?.phone },
@@ -234,7 +239,7 @@ const LotDetail = () => {
           </Card>
 
           <Card title="How entry and exit work">
-            <ol className="space-y-3 text-sm text-ink-700">
+            <ol className="space-y-3 text-footnote text-label">
               {[
                 'Book your slot and pay for the time you need.',
                 'Drive up to the entrance. The camera reads your number plate.',
@@ -243,7 +248,7 @@ const LotDetail = () => {
                 'If you stayed past your booked exit time, an overstay charge is generated automatically.',
               ].map((step, index) => (
                 <li key={step} className="flex gap-3">
-                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-capsule bg-brand-100 text-caption font-semibold text-brand-700">
                     {index + 1}
                   </span>
                   {step}
@@ -309,51 +314,51 @@ const LotDetail = () => {
               </Field>
 
               {exitTime && (
-                <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-ink-700">
+                <p className="rounded-control bg-slate-50 px-3 py-2 text-footnote text-label">
                   Expected exit: <strong>{timeOnly(exitTime)}</strong>
                 </p>
               )}
 
               {/* ---- Live price breakdown ---- */}
-              <div className="rounded-lg border border-slate-200 p-4">
+              <div className="rounded-control border border-separator p-4">
                 {quoting ? (
-                  <p className="text-sm text-ink-500">Calculating price...</p>
+                  <p className="text-footnote text-label-secondary">Calculating price...</p>
                 ) : quoteError ? (
-                  <p className="text-sm text-rose-600">{quoteError}</p>
+                  <p className="text-footnote text-rose-600">{quoteError}</p>
                 ) : quote ? (
                   <>
                     <div className="flex items-baseline justify-between">
-                      <span className="text-sm text-ink-500">Total payable</span>
-                      <span className="text-2xl font-semibold text-ink-900">{money(quote.amount)}</span>
+                      <span className="text-footnote text-label-secondary">Total payable</span>
+                      <span className="text-title-2 tabular-nums text-label">{money(quote.amount)}</span>
                     </div>
 
-                    <dl className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 text-sm">
+                    <dl className="mt-3 space-y-1.5 border-t border-separator pt-3 text-footnote">
                       <div className="flex justify-between">
-                        <dt className="text-ink-500">Base rate</dt>
-                        <dd className="text-ink-700">
+                        <dt className="text-label-secondary">Base rate</dt>
+                        <dd className="text-label">
                           {money(quote.baseRatePerHour)}/hr &times; {quote.durationHours}h
                         </dd>
                       </div>
                       {quote.multipliers.combined !== 1 && (
                         <div className="flex justify-between">
-                          <dt className="text-ink-500">Demand pricing</dt>
+                          <dt className="text-label-secondary">Demand pricing</dt>
                           <dd className={quote.multipliers.combined > 1 ? 'text-amber-700' : 'text-emerald-700'}>
                             &times;{quote.multipliers.combined}
                           </dd>
                         </div>
                       )}
                       <div className="flex justify-between font-medium">
-                        <dt className="text-ink-700">Effective rate</dt>
-                        <dd className="text-ink-900">{money(quote.effectiveRatePerHour)}/hr</dd>
+                        <dt className="text-label">Effective rate</dt>
+                        <dd className="text-label">{money(quote.effectiveRatePerHour)}/hr</dd>
                       </div>
                     </dl>
 
                     {quote.multipliers.combined !== 1 && (
-                      <details className="mt-3 border-t border-slate-100 pt-3">
-                        <summary className="cursor-pointer text-xs font-medium text-brand-700">
+                      <details className="mt-3 border-t border-separator pt-3">
+                        <summary className="cursor-pointer text-caption font-medium text-brand-700">
                           Why this price?
                         </summary>
-                        <ul className="mt-2 space-y-1 text-xs text-ink-500">
+                        <ul className="mt-2 space-y-1 text-caption text-label-secondary">
                           <li>Occupancy: &times;{quote.multipliers.occupancy}</li>
                           <li>
                             Peak hours: &times;{quote.multipliers.peakHour}
@@ -369,7 +374,7 @@ const LotDetail = () => {
                     )}
                   </>
                 ) : (
-                  <p className="text-sm text-ink-500">Choose a time to see the price.</p>
+                  <p className="text-footnote text-label-secondary">Choose a time to see the price.</p>
                 )}
               </div>
 
@@ -389,7 +394,7 @@ const LotDetail = () => {
                 {quote ? `Pay ${money(quote.amount)} and book` : 'Book slot'}
               </Button>
 
-              <p className="text-center text-xs text-ink-500">
+              <p className="text-center text-caption text-label-secondary">
                 Bookings cannot be cancelled or refunded. {availableSlots} slot(s) available now.
                 {indicative?.activePeakWindows?.length ? ` Peak pricing active: ${indicative.activePeakWindows.join(', ')}.` : ''}
               </p>

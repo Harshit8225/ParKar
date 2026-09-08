@@ -2,7 +2,20 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { errorMessage } from '../../api/client';
 import { parkingApi } from '../../api/endpoints';
-import { Alert, Badge, Card, EmptyState, Field, Pagination, Select, Spinner, Table, Td } from '../../components/ui';
+import {
+  Alert,
+  Badge,
+  Card,
+  EmptyState,
+  Field,
+  LinkButton,
+  PageHeader,
+  Pagination,
+  Select,
+  Spinner,
+  Table,
+  Td,
+} from '../../components/ui';
 import { money, percent } from '../../utils/format';
 
 const STATUSES = [
@@ -39,26 +52,27 @@ const MyLots = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-ink-900">My parking facilities</h1>
-          <p className="text-sm text-ink-500">Capacity, rates and approval status for each facility you run.</p>
-        </div>
-        <div className="flex items-end gap-3">
-          <Field label="Filter" className="w-48">
-            <Select value={status} onChange={(event) => setStatus(event.target.value)}>
-              {STATUSES.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Link to="/owner/lots/new" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
-            Register facility
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Parking owner"
+        title="My parking facilities"
+        subtitle="Capacity, rates and approval status for each facility you run."
+        actions={
+          <>
+            <Field label="Filter" className="w-48">
+              <Select value={status} onChange={(event) => setStatus(event.target.value)}>
+                {STATUSES.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <LinkButton to="/owner/lots/new" icon="plus">
+              Register facility
+            </LinkButton>
+          </>
+        }
+      />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
 
@@ -70,9 +84,7 @@ const MyLots = () => {
             title="No facilities to show"
             description={status ? 'No facilities have this status.' : 'Register a facility to start accepting bookings.'}
             action={
-              <Link to="/owner/lots/new" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
-                Register facility
-              </Link>
+              <LinkButton to="/owner/lots/new" icon="plus">Register facility</LinkButton>
             }
           />
         </Card>
@@ -82,28 +94,28 @@ const MyLots = () => {
             {data.items.map((lot) => (
               <tr key={lot.id} className="hover:bg-slate-50">
                 <Td>
-                  <span className="block max-w-[16rem] truncate font-medium text-ink-900">{lot.name}</span>
-                  <span className="block max-w-[16rem] truncate text-xs text-ink-500">{lot.location.address}</span>
+                  <span className="block max-w-[16rem] truncate font-medium text-label">{lot.name}</span>
+                  <span className="block max-w-[16rem] truncate text-caption text-label-secondary">{lot.location.address}</span>
                 </Td>
                 <Td>{lot.location.city}</Td>
                 <Td>
                   <Badge status={lot.status} />
                   {lot.statusReason && (
-                    <span className="mt-0.5 block max-w-[12rem] truncate text-xs text-ink-500" title={lot.statusReason}>
+                    <span className="mt-0.5 block max-w-[12rem] truncate text-caption text-label-secondary" title={lot.statusReason}>
                       {lot.statusReason}
                     </span>
                   )}
                 </Td>
-                <Td>
+                <Td className="tabular-nums">
                   {lot.capacity.two_wheeler} / {lot.capacity.four_wheeler}
                 </Td>
-                <Td>
+                <Td className="tabular-nums">
                   {money(lot.hourlyRate.two_wheeler)} / {money(lot.hourlyRate.four_wheeler)}
                 </Td>
-                <Td>{percent((lot.occupancyRate || 0) * 100, 0)}</Td>
+                <Td className="tabular-nums">{percent((lot.occupancyRate || 0) * 100, 0)}</Td>
                 <Td>{lot.operatingHours.is24x7 ? '24/7' : `${lot.operatingHours.openTime}-${lot.operatingHours.closeTime}`}</Td>
                 <Td>
-                  <Link to={`/owner/lots/${lot.id}`} className="text-sm font-medium text-brand-700 hover:underline">
+                  <Link to={`/owner/lots/${lot.id}`} className="tap rounded-capsule px-2.5 py-1 text-footnote font-medium text-brand-700 hover:bg-brand-50">
                     Manage
                   </Link>
                 </Td>

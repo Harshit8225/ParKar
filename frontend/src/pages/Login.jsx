@@ -41,16 +41,28 @@ const Login = () => {
   const update = (field) => (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
 
   return (
-    <div className="flex min-h-full items-center justify-center px-4 py-10">
+    <div className="relative isolate flex min-h-full items-center justify-center px-4 py-12">
+      {/* A single soft bloom behind the card, so the page has depth without
+          resorting to a busy background. Pure paint - no layout, no cost. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 bg-[radial-gradient(60%_100%_at_50%_0%,color-mix(in_oklab,var(--tint)_18%,transparent)_0%,transparent_100%)]"
+      />
+
       <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
+        <div className="mb-8 text-center">
           <Link to="/" className="inline-flex" aria-label="ParKar home">
             <Brand size="lg" className="justify-center" />
           </Link>
-          <p className="mt-3 text-sm text-ink-500">Sign in to book parking or manage your facilities.</p>
+          <p className="mt-4 text-callout text-label-secondary">
+            Sign in to book parking or manage your facilities.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5 rounded-sheet border border-separator bg-surface p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_24px_64px_-24px_rgba(0,0,0,0.18)]"
+        >
           {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
 
           <Field label="Email" required>
@@ -79,7 +91,7 @@ const Login = () => {
             Sign in
           </Button>
 
-          <p className="text-center text-sm text-ink-500">
+          <p className="text-center text-footnote text-label-secondary">
             No account?{' '}
             <Link to="/register" className="font-medium text-brand-700 hover:underline">
               Create one
@@ -87,24 +99,24 @@ const Login = () => {
           </p>
         </form>
 
-        <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white/60 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Seeded demo accounts</p>
-          <ul className="mt-2 space-y-1 text-sm">
+        <div className="mt-5 rounded-card border border-dashed border-separator-strong p-4">
+          <p className="eyebrow text-label-tertiary">Seeded demo accounts</p>
+          <ul className="mt-3 space-y-1 text-footnote">
             {DEMO_ACCOUNTS.map((account) => (
               <li key={account.email} className="flex items-center justify-between gap-2">
-                <span className="text-ink-500">{account.role}</span>
+                <span className="text-label-secondary">{account.role}</span>
                 <button
                   type="button"
                   onClick={() => setForm({ email: account.email, password: 'Parking@123' })}
-                  className="font-mono text-xs text-brand-700 hover:underline"
+                  className="tap rounded-tight px-1.5 py-0.5 font-mono text-caption text-brand-700 hover:bg-brand-50"
                 >
                   {account.email}
                 </button>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-ink-500">
-            Password for all seeded accounts: <span className="font-mono">Parking@123</span>
+          <p className="mt-3 text-caption text-label-tertiary">
+            Password for all seeded accounts: <span className="font-mono text-label-secondary">Parking@123</span>
           </p>
         </div>
       </div>

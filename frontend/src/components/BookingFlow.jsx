@@ -4,6 +4,8 @@ import { errorMessage } from '../api/client';
 import { bookingApi, geoApi, parkingApi, pricingApi } from '../api/endpoints';
 import { useAuth } from '../context/AuthContext';
 import { useCheckout } from '../hooks/useCheckout';
+import Icon from './Icon';
+import { Button } from './ui';
 import { money, timeOnly, toLocalInputValue, vehicleLabel } from '../utils/format';
 import { fetchDrivingRoute, formatDuration, formatKm, googleDirectionsUrl, haversineKm } from '../utils/geo';
 
@@ -33,23 +35,14 @@ const defaultArrival = () => {
   return now;
 };
 
-const ICONS = {
-  pin: 'M12 21s6.5-5.3 6.5-10.2A6.5 6.5 0 0 0 5.5 10.8C5.5 15.7 12 21 12 21Zm0-8.2a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8Z',
-  back: 'M14 6l-6 6 6 6',
-  lock: 'M7 10.5V8a5 5 0 0 1 10 0v2.5M6 10.5h12a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7.5a1 1 0 0 1 1-1Z',
-  route: 'M6.5 20.5V9m0 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm11 0v6.5a4 4 0 0 1-4 4H9m0 0 2.5-2.5M9 20.5 11.5 23m6-14a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
-  external: 'M14 4h6v6M20 4l-8.5 8.5M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
-};
-
-const Icon = ({ name, className = 'h-4 w-4' }) => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none">
-    <path d={ICONS[name]} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const FIELD_LABEL = 'mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500';
+const FIELD_LABEL = 'eyebrow mb-1.5 block text-label-tertiary';
+/**
+ * These fields sit inside the glass sheet (28px) with ~14px of padding, so the
+ * concentric rule puts them at `rounded-control`. Focus is a ring rather than a
+ * border swap, so the control never changes size and the row cannot reflow.
+ */
 const FIELD =
-  'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-ink-900 shadow-sm transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100';
+  'w-full rounded-control border border-separator bg-surface px-3.5 py-3 text-callout text-label transition-[box-shadow,border-color] duration-200 ease-cupertino placeholder:text-label-tertiary hover:border-separator-strong focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15';
 
 /* ------------------------------------------------------- facility detail ---- */
 
@@ -155,28 +148,28 @@ const FacilityPanel = ({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <div className="rounded-card border border-separator bg-surface p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:p-6">
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 transition hover:text-brand-800"
+        className="tap -ml-2 inline-flex items-center gap-1 rounded-capsule px-2 py-1 text-footnote font-medium text-brand-700 hover:bg-brand-50"
       >
-        <Icon name="back" />
+        <Icon name="back" size={4} />
         Back to all pins
       </button>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h3 className="text-lg font-bold tracking-tight text-ink-900">{lot.name}</h3>
-          <p className="mt-1 text-sm text-ink-500">
+          <h3 className="text-title-3 text-label">{lot.name}</h3>
+          <p className="mt-1 text-footnote text-label-secondary">
             {lot.location.address}
             {lot.location.city ? `, ${lot.location.city}` : ''}
           </p>
         </div>
         {lot.rating.count > 0 && (
-          <span className="rounded-lg bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700">
+          <span className="rounded-capsule bg-amber-50 px-3 py-1.5 text-footnote font-semibold tabular-nums text-amber-700">
             {lot.rating.average.toFixed(1)} &#9733;
-            <span className="ml-1 text-xs font-normal">({lot.rating.count})</span>
+            <span className="ml-1 text-caption font-normal">({lot.rating.count})</span>
           </span>
         )}
       </div>
@@ -185,7 +178,7 @@ const FacilityPanel = ({
         {amenities.map((item) => (
           <span
             key={item}
-            className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-ink-700 ring-1 ring-inset ring-slate-200"
+            className="rounded-capsule bg-slate-100 px-2.5 py-1 text-caption font-medium text-label-secondary ring-1 ring-inset ring-separator"
           >
             {item}
           </span>
@@ -194,28 +187,28 @@ const FacilityPanel = ({
 
       {/* ---- How far, and how to get there. The route is already drawn: it is
               fetched the moment this facility is picked, not on request. ---- */}
-      <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="mt-5 rounded-control border border-separator bg-slate-50 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             {routing ? (
-              <p className="inline-flex items-center gap-2 text-sm font-medium text-ink-500">
+              <p className="inline-flex items-center gap-2 text-footnote font-medium text-label-secondary">
                 <span
                   aria-hidden="true"
-                  className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+                  className="h-3.5 w-3.5 animate-spin rounded-capsule border-2 border-current border-t-transparent"
                 />
                 Drawing your route...
               </p>
             ) : route ? (
-              <p className="inline-flex items-center gap-2 text-sm font-semibold text-ink-900">
-                <Icon name="route" className="h-4 w-4 text-brand-600" />
+              <p className="inline-flex items-center gap-2 text-footnote font-semibold text-label">
+                <Icon name="route" size={4} className="text-brand-600" />
                 {formatKm(route.distanceKm)} by road &middot; about {formatDuration(route.durationSeconds)} driving
               </p>
             ) : straightLine ? (
-              <p className="text-sm font-semibold text-ink-900">{straightLine} from you, in a straight line</p>
+              <p className="text-footnote font-semibold text-label">{straightLine} from you, in a straight line</p>
             ) : (
-              <p className="text-sm font-medium text-ink-500">Share your location to see how far this is.</p>
+              <p className="text-footnote font-medium text-label-secondary">Share your location to see how far this is.</p>
             )}
-            <p className="mt-0.5 text-xs text-ink-500">
+            <p className="mt-0.5 text-caption text-label-secondary">
               {route ? 'The blue line on the map is this route.' : 'Your route appears on the map above.'}
             </p>
           </div>
@@ -223,40 +216,40 @@ const FacilityPanel = ({
           <a
             href={googleDirectionsUrl(userLocation, lot.location)}
             target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold text-ink-700 ring-1 ring-slate-300 transition hover:bg-white"
+            rel="noreferrer noopener"
+            className="tap inline-flex items-center gap-1.5 rounded-capsule bg-surface px-4 py-2.5 text-footnote font-semibold text-label ring-1 ring-separator-strong hover:bg-slate-50"
           >
             Navigate in Google Maps
-            <Icon name="external" className="h-3.5 w-3.5" />
+            <Icon name="external" size={3.5} className="opacity-60" />
           </a>
         </div>
 
-        {routeError && <p className="mt-2.5 text-xs font-medium text-amber-700">{routeError}</p>}
+        {routeError && <p className="mt-2.5 text-caption font-medium text-amber-700">{routeError}</p>}
       </div>
 
-      <dl className="mt-5 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-3">
+      <dl className="mt-5 grid gap-4 border-t border-separator pt-5 sm:grid-cols-3">
         <div>
-          <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">Vehicle</dt>
-          <dd className="mt-1 text-sm font-semibold text-ink-900">{vehicleLabel(vehicleType)}</dd>
+          <dt className="eyebrow text-label-tertiary">Vehicle</dt>
+          <dd className="mt-1 text-footnote font-semibold text-label">{vehicleLabel(vehicleType)}</dd>
         </div>
         <div>
-          <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">Free slots</dt>
-          <dd className={`mt-1 text-sm font-semibold ${soldOut ? 'text-rose-600' : 'text-emerald-600'}`}>
+          <dt className="eyebrow text-label-tertiary">Free slots</dt>
+          <dd className={`mt-1 text-footnote font-semibold ${soldOut ? 'text-rose-600' : 'text-emerald-600'}`}>
             {available} of {lot.capacity[vehicleType]}
           </dd>
         </div>
         <div>
-          <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">Your window</dt>
-          <dd className="mt-1 text-sm font-semibold text-ink-900">
+          <dt className="eyebrow text-label-tertiary">Your window</dt>
+          <dd className="mt-1 text-footnote font-semibold text-label">
             {timeOnly(parkingWindow.entry)} &rarr; {timeOnly(parkingWindow.exit)} ({parkingWindow.hours}h)
           </dd>
         </div>
       </dl>
 
-      {lot.description && <p className="mt-4 text-sm leading-relaxed text-ink-500">{lot.description}</p>}
+      {lot.description && <p className="mt-4 text-footnote leading-relaxed text-label-secondary">{lot.description}</p>}
 
       {/* ---- Price and confirmation ---- */}
-      <form onSubmit={book} className="mt-5 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2">
+      <form onSubmit={book} className="mt-5 grid gap-4 border-t border-separator pt-5 sm:grid-cols-2">
         <label className="block">
           <span className={FIELD_LABEL}>Vehicle number</span>
           <input
@@ -268,30 +261,32 @@ const FacilityPanel = ({
             maxLength={15}
             className={`${FIELD} font-mono uppercase tracking-wider`}
           />
-          <span className="mt-1.5 block text-xs text-ink-500">The gate camera matches this exactly.</span>
+          <span className="mt-1.5 block text-caption text-label-secondary">The gate camera matches this exactly.</span>
         </label>
 
-        <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-200">
+        <div className="rounded-control bg-slate-50 p-4 ring-1 ring-inset ring-separator">
           {quoting ? (
-            <p className="text-sm text-ink-500">Pricing your window...</p>
+            <p className="text-footnote text-label-secondary">Pricing your window...</p>
           ) : quoteError ? (
-            <p className="text-sm text-rose-600">{quoteError}</p>
+            <p className="text-footnote text-rose-600">{quoteError}</p>
           ) : quote ? (
             <>
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-ink-500">Total payable</span>
-                <span className="text-2xl font-bold text-ink-900">{money(quote.amount)}</span>
+                <span className="eyebrow text-label-tertiary">Total payable</span>
+                {/* Tabular figures: the total re-prices as the window changes,
+                    and proportional digits would make it jump sideways. */}
+                <span className="text-title-2 tabular-nums text-label">{money(quote.amount)}</span>
               </div>
-              <dl className="mt-3 space-y-1 border-t border-slate-200 pt-3 text-xs">
+              <dl className="mt-3 space-y-1 border-t border-separator pt-3 text-caption">
                 <div className="flex justify-between">
-                  <dt className="text-ink-500">Rate</dt>
-                  <dd className="font-medium text-ink-700">
+                  <dt className="text-label-secondary">Rate</dt>
+                  <dd className="font-medium text-label">
                     {money(quote.effectiveRatePerHour)}/hr &times; {quote.durationHours}h
                   </dd>
                 </div>
                 {quote.multipliers.combined !== 1 && (
                   <div className="flex justify-between">
-                    <dt className="text-ink-500">Demand pricing</dt>
+                    <dt className="text-label-secondary">Demand pricing</dt>
                     <dd className={quote.multipliers.combined > 1 ? 'text-amber-700' : 'text-emerald-700'}>
                       &times;{quote.multipliers.combined}
                     </dd>
@@ -299,7 +294,7 @@ const FacilityPanel = ({
                 )}
                 {quote.coupon && (
                   <div className="flex justify-between">
-                    <dt className="text-ink-500">
+                    <dt className="text-label-secondary">
                       Code {quote.coupon.code} ({quote.coupon.discountPercent}% off)
                     </dt>
                     <dd className="font-medium text-emerald-700">-{money(quote.discountAmount)}</dd>
@@ -310,15 +305,15 @@ const FacilityPanel = ({
               {/* Discount code. Only offered when the server has any configured. */}
               {quote.couponsAvailable &&
                 (quote.coupon ? (
-                  <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-emerald-50 px-3 py-2 ring-1 ring-inset ring-emerald-200">
-                    <span className="text-xs font-semibold text-emerald-800">{quote.coupon.code} applied</span>
+                  <div className="mt-3 flex items-center justify-between gap-2 rounded-inner bg-emerald-50 px-3 py-2 ring-1 ring-inset ring-emerald-200">
+                    <span className="text-caption font-semibold text-emerald-800">{quote.coupon.code} applied</span>
                     <button
                       type="button"
                       onClick={() => {
                         setAppliedCoupon('');
                         setCouponInput('');
                       }}
-                      className="text-xs font-medium text-emerald-700 underline-offset-2 hover:underline"
+                      className="tap rounded-capsule px-2 py-0.5 text-caption font-medium text-emerald-700 hover:bg-emerald-100"
                     >
                       Remove
                     </button>
@@ -330,16 +325,16 @@ const FacilityPanel = ({
                       onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
                       placeholder="Discount code"
                       aria-label="Discount code"
-                      className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium uppercase tracking-wider text-ink-900 placeholder:font-normal placeholder:tracking-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                      className="min-w-0 flex-1 rounded-inner border border-separator-strong bg-surface px-3 py-2 text-caption font-medium uppercase tracking-wider text-label placeholder:font-normal placeholder:tracking-normal focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15"
                     />
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
                       onClick={() => setAppliedCoupon(couponInput.trim())}
                       disabled={!couponInput.trim()}
-                      className="shrink-0 rounded-lg bg-ink-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                      className="shrink-0"
                     >
                       Apply
-                    </button>
+                    </Button>
                   </div>
                 ))}
             </>
@@ -347,32 +342,28 @@ const FacilityPanel = ({
         </div>
 
         <div className="sm:col-span-2">
-          {error && <p className="mb-3 text-sm font-medium text-rose-600">{error}</p>}
-          {payError && <p className="mb-3 text-sm font-medium text-rose-600">{payError}</p>}
+          {error && <p className="mb-3 text-footnote font-medium text-rose-600">{error}</p>}
+          {payError && <p className="mb-3 text-footnote font-medium text-rose-600">{payError}</p>}
           {soldOut && (
-            <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <p className="mb-3 rounded-control bg-amber-50 px-3.5 py-2.5 text-footnote text-amber-800">
               Every {vehicleLabel(vehicleType).toLowerCase()} slot here is taken right now. Pick another pin.
             </p>
           )}
 
-          <button
+          <Button
             type="submit"
-            disabled={soldOut || processing || quoting || !quote || !vehicleNumber.trim()}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-brand-600/25 transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-brand-300 disabled:shadow-none sm:w-auto"
+            size="lg"
+            loading={processing}
+            disabled={soldOut || quoting || !quote || !vehicleNumber.trim()}
+            className="w-full sm:w-auto"
           >
-            {processing && (
-              <span
-                aria-hidden="true"
-                className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-              />
-            )}
             {!quote
               ? 'Book this slot'
               : quote.amount <= 0
                 ? 'Confirm booking (free)'
                 : `Pay ${money(quote.amount)} and book`}
-          </button>
-          <p className="mt-2.5 text-xs text-ink-500">Bookings cannot be cancelled or refunded once paid.</p>
+          </Button>
+          <p className="mt-3 text-caption text-label-tertiary">Bookings cannot be cancelled or refunded once paid.</p>
         </div>
       </form>
     </div>
@@ -599,11 +590,15 @@ const BookingFlow = () => {
 
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-[0_24px_70px_-20px_rgba(2,8,32,0.55)] ring-1 ring-black/5 backdrop-blur-xl">
+    /**
+     * The one panel that floats over the hero photograph, so it is the
+     * product's flagship Liquid Glass surface: the deck lighting behind it
+     * tints the material through `saturate()`, and the half-pixel top highlight
+     * catches the light the way a real lip would.
+     */
+    <div className="glass-thick overflow-hidden rounded-sheet">
       <form onSubmit={search} className="p-5 sm:p-7">
-        <h2 className="text-base font-bold uppercase tracking-[0.06em] text-ink-900 sm:text-lg">
-          Book your parking space now
-        </h2>
+        <h2 className="text-title-3 text-label">Book your parking space now</h2>
 
         <div className="mt-5 grid gap-3.5 lg:grid-cols-[1.5fr_1fr_1fr_1fr_auto] lg:items-end">
           <div className="block">
@@ -619,17 +614,17 @@ const BookingFlow = () => {
                 disabled={locating}
                 title="Use my current location"
                 aria-label="Use my current location"
-                className={`absolute inset-y-1.5 left-1.5 grid w-9 place-items-center rounded-lg transition ${
-                  usingGps ? 'text-brand-700' : 'text-slate-400 hover:text-brand-700'
-                } hover:bg-brand-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent`}
+                className={`tap absolute inset-y-1.5 left-1.5 grid w-9 place-items-center rounded-inner ${
+                  usingGps ? 'text-brand-700' : 'text-label-tertiary hover:text-brand-700'
+                } hover:bg-brand-50 disabled:cursor-not-allowed disabled:text-label-tertiary disabled:hover:bg-transparent`}
               >
                 {locating ? (
                   <span
                     aria-hidden="true"
-                    className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                    className="h-4 w-4 animate-spin rounded-capsule border-2 border-current border-t-transparent"
                   />
                 ) : (
-                  <Icon name="pin" className="h-4.5 w-4.5" />
+                  <Icon name="pin" size={4.5} />
                 )}
               </button>
               <input
@@ -664,55 +659,45 @@ const BookingFlow = () => {
             </select>
           </label>
 
-          <button
-            type="submit"
-            disabled={searching}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-7 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-brand-600/30 transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-brand-300 disabled:shadow-none lg:w-auto"
-          >
-            {searching && (
-              <span
-                aria-hidden="true"
-                className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-              />
-            )}
+          <Button type="submit" size="lg" loading={searching} className="w-full lg:w-auto">
             {searching ? 'Searching' : 'Find parking'}
-          </button>
+          </Button>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
           {usingGps && (
-            <span className="text-xs font-medium text-emerald-700">
+            <span className="text-caption font-medium text-emerald-700">
               Searching around your location - edit the field to search somewhere else.
             </span>
           )}
           {!canSearch && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-500">
-              <Icon name="lock" className="h-3.5 w-3.5" />
+            <span className="inline-flex items-center gap-1.5 text-caption font-medium text-label-secondary">
+              <Icon name="lock" size={3.5} />
               Sign in to see parking near you
             </span>
           )}
         </div>
 
-        {error && <p className="mt-3 text-sm font-medium text-rose-600">{error}</p>}
+        {error && <p className="mt-3 text-footnote font-medium text-rose-600">{error}</p>}
       </form>
 
       {/* ---- Map, and the facility the driver picks from it ---- */}
       {results !== null && (
-        <div className="border-t border-slate-200 bg-slate-50/80 p-5 sm:p-7">
+        <div className="border-t border-separator bg-slate-50/70 p-5 sm:p-7">
           {results.length === 0 ? (
             <div className="py-6 text-center">
-              <p className="text-sm font-semibold text-ink-900">No facilities with free slots matched</p>
-              <p className="mt-1 text-sm text-ink-500">
+              <p className="text-footnote font-semibold text-label">No facilities with free slots matched</p>
+              <p className="mt-1 text-footnote text-label-secondary">
                 Try a different area, or shift your window - facilities fill up fast at peak hours.
               </p>
             </div>
           ) : (
             <>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-sm font-semibold text-ink-900">
+                <p className="text-footnote font-semibold text-label">
                   {results.length} {results.length === 1 ? 'facility' : 'facilities'} with free slots
                 </p>
-                <p className="text-xs text-ink-500">
+                <p className="text-caption text-label-secondary">
                   {selected ? 'Pick another pin to compare.' : 'Tap a pin to see its details and price.'}
                 </p>
               </div>
@@ -721,7 +706,7 @@ const BookingFlow = () => {
                   the details are readable together. */}
               <Suspense
                 fallback={
-                  <div className="mt-4 grid h-[22rem] place-items-center rounded-2xl border border-slate-200 bg-slate-100 text-sm text-ink-500 sm:h-[28rem]">
+                  <div className="mt-4 grid h-[22rem] place-items-center rounded-card border border-separator bg-slate-100 text-footnote text-label-secondary sm:h-[28rem]">
                     Loading map...
                   </div>
                 }
@@ -738,7 +723,7 @@ const BookingFlow = () => {
               </Suspense>
 
               {!userLocation && (
-                <p className="mt-3 text-xs text-ink-500">
+                <p className="mt-3 text-caption text-label-secondary">
                   Share your location to see how far each facility is and to get directions.
                 </p>
               )}

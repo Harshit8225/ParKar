@@ -11,6 +11,7 @@ import {
   Input,
   KeyValue,
   Modal,
+  PageHeader,
   Pagination,
   Select,
   Spinner,
@@ -80,12 +81,7 @@ const Users = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-ink-900">User management</h1>
-        <p className="text-sm text-ink-500">
-          Drivers and parking owners. Deactivating an owner also takes their facilities out of search.
-        </p>
-      </div>
+      <PageHeader eyebrow="Platform admin" title="User management" subtitle="Drivers and parking owners. Deactivating an owner also takes their facilities out of search." />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
       {notice && <Alert kind="success" onDismiss={() => setNotice('')}>{notice}</Alert>}
@@ -123,10 +119,10 @@ const Users = () => {
             <Table headers={['Name', 'Email', 'Role', 'Activity', 'Joined', 'Last login', 'Status', 'Actions']}>
               {data.items.map((user) => (
                 <tr key={user.id} className="hover:bg-slate-50">
-                  <Td className="font-medium text-ink-900">{user.name}</Td>
+                  <Td className="font-medium text-label">{user.name}</Td>
                   <Td>
                     <span className="block max-w-[14rem] truncate">{user.email}</span>
-                    {user.phone && <span className="block text-xs text-ink-500">{user.phone}</span>}
+                    {user.phone && <span className="block text-caption text-label-secondary">{user.phone}</span>}
                   </Td>
                   <Td>{ROLE_LABEL[user.role]}</Td>
                   <Td>
@@ -186,8 +182,8 @@ const Users = () => {
             />
 
             {detail.ownerProfile && (
-              <div className="border-t border-slate-100 pt-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">Business</p>
+              <div className="border-t border-separator pt-4">
+                <p className="mb-2 eyebrow text-label-tertiary">Business</p>
                 <KeyValue
                   rows={[
                     { label: 'Business name', value: detail.ownerProfile.businessName },
@@ -200,9 +196,9 @@ const Users = () => {
             )}
 
             {detail.lots?.length > 0 && (
-              <div className="border-t border-slate-100 pt-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">Facilities</p>
-                <ul className="space-y-1.5 text-sm">
+              <div className="border-t border-separator pt-4">
+                <p className="mb-2 eyebrow text-label-tertiary">Facilities</p>
+                <ul className="space-y-1.5 text-footnote">
                   {detail.lots.map((lot) => (
                     <li key={lot.id} className="flex items-center justify-between gap-3">
                       <span className="truncate">{lot.name}</span>
@@ -214,13 +210,13 @@ const Users = () => {
             )}
 
             {detail.recentBookings?.length > 0 && (
-              <div className="border-t border-slate-100 pt-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">Recent bookings</p>
-                <ul className="space-y-1.5 text-sm">
+              <div className="border-t border-separator pt-4">
+                <p className="mb-2 eyebrow text-label-tertiary">Recent bookings</p>
+                <ul className="space-y-1.5 text-footnote">
                   {detail.recentBookings.map((booking) => (
                     <li key={booking._id} className="flex items-center justify-between gap-3">
                       <span className="truncate">
-                        <span className="font-mono text-xs">{booking.bookingId}</span> &middot; {booking.parkingLot?.name}
+                        <span className="font-mono text-caption">{booking.bookingId}</span> &middot; {booking.parkingLot?.name}
                       </span>
                       <Badge status={booking.status} />
                     </li>

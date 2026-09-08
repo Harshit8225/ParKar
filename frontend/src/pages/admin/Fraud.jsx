@@ -1,7 +1,20 @@
 import { useEffect, useState } from 'react';
 import { errorMessage } from '../../api/client';
 import { adminApi } from '../../api/endpoints';
-import { Alert, Badge, Card, EmptyState, Field, Input, Pagination, Spinner, StatCard, Table, Td } from '../../components/ui';
+import {
+  Alert,
+  Badge,
+  Card,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  Pagination,
+  Spinner,
+  StatCard,
+  Table,
+  Td,
+} from '../../components/ui';
 import { dateTime, statusLabel } from '../../utils/format';
 
 const RESULT_HELP = {
@@ -41,12 +54,7 @@ const Fraud = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-ink-900">Fraud and security report</h1>
-        <p className="text-sm text-ink-500">
-          Gate events the system flagged for human review. Every camera capture is recorded, whether or not the barrier opened.
-        </p>
-      </div>
+      <PageHeader eyebrow="Platform admin" title="Fraud and security report" subtitle="Gate events the system flagged for human review. Every camera capture is recorded, whether or not the barrier opened." />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
 
@@ -85,11 +93,11 @@ const Fraud = () => {
                   <Td>{dateTime(event.createdAt)}</Td>
                   <Td>
                     <span className="block max-w-[13rem] truncate">{event.parkingLot?.name || '-'}</span>
-                    <span className="block text-xs text-ink-500">{event.parkingLot?.location?.city}</span>
+                    <span className="block text-caption text-label-secondary">{event.parkingLot?.location?.city}</span>
                   </Td>
                   <Td>{statusLabel(event.eventType)}</Td>
-                  <Td className="font-mono text-xs font-semibold text-rose-700">{event.recognizedPlate || 'UNREADABLE'}</Td>
-                  <Td className="font-mono text-xs">{event.matchDetail?.bookedPlate || event.booking?.vehicleNumber || '-'}</Td>
+                  <Td className="font-mono text-caption font-semibold text-rose-700">{event.recognizedPlate || 'UNREADABLE'}</Td>
+                  <Td className="font-mono text-caption">{event.matchDetail?.bookedPlate || event.booking?.vehicleNumber || '-'}</Td>
                   <Td>
                     {event.matchDetail?.similarity !== undefined ? `${(event.matchDetail.similarity * 100).toFixed(0)}%` : '-'}
                   </Td>
@@ -97,11 +105,11 @@ const Fraud = () => {
                     <Badge tone="bg-rose-50 text-rose-700 ring-rose-200">{statusLabel(event.result)}</Badge>
                   </Td>
                   <Td>
-                    <span className="block max-w-[20rem] truncate text-xs text-ink-500" title={event.message}>
+                    <span className="block max-w-[20rem] truncate text-caption text-label-secondary" title={event.message}>
                       {event.message}
                     </span>
                     {event.booking?.bookingId && (
-                      <span className="block font-mono text-xs text-ink-500">{event.booking.bookingId}</span>
+                      <span className="block font-mono text-caption text-label-secondary">{event.booking.bookingId}</span>
                     )}
                   </Td>
                 </tr>
@@ -113,13 +121,13 @@ const Fraud = () => {
       </Card>
 
       <Card title="What these results mean">
-        <dl className="space-y-2 text-sm">
+        <dl className="space-y-2 text-footnote">
           {Object.entries(RESULT_HELP).map(([key, description]) => (
             <div key={key} className="flex flex-wrap items-baseline gap-2">
               <dt>
-                <Badge tone="bg-slate-100 text-slate-600 ring-slate-200">{statusLabel(key)}</Badge>
+                <Badge tone="bg-slate-100 text-label-secondary ring-separator">{statusLabel(key)}</Badge>
               </dt>
-              <dd className="flex-1 text-ink-500">{description}</dd>
+              <dd className="flex-1 text-label-secondary">{description}</dd>
             </div>
           ))}
         </dl>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { errorMessage } from '../../api/client';
 import { bookingApi, paymentApi, sessionApi } from '../../api/endpoints';
+import Icon from '../../components/Icon';
 import { Alert, Badge, Button, Card, KeyValue, Spinner } from '../../components/ui';
 import { useCheckout } from '../../hooks/useCheckout';
 import { dateTime, duration, money, vehicleLabel } from '../../utils/format';
@@ -84,8 +85,12 @@ const BookingDetail = () => {
 
   return (
     <div className="space-y-6">
-      <Link to="/app/bookings" className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
-        &larr; Back to my bookings
+      <Link
+        to="/app/bookings"
+        className="tap -ml-2 inline-flex w-fit items-center gap-1 rounded-capsule px-2 py-1 text-footnote font-medium text-brand-700 hover:bg-brand-50"
+      >
+        <Icon name="back" size={4} />
+        Back to my bookings
       </Link>
 
       {notice && <Alert kind="success" onDismiss={() => setNotice('')}>{notice}</Alert>}
@@ -113,9 +118,9 @@ const BookingDetail = () => {
         />
 
         {awaitingPayment && (
-          <div className="mt-5 rounded-lg bg-amber-50 p-4 ring-1 ring-inset ring-amber-200">
-            <p className="text-sm font-medium text-amber-900">This booking is not confirmed yet.</p>
-            <p className="mt-1 text-sm text-amber-800">
+          <div className="mt-5 rounded-control bg-amber-50 p-4 ring-1 ring-inset ring-amber-200">
+            <p className="text-footnote font-medium text-amber-900">This booking is not confirmed yet.</p>
+            <p className="mt-1 text-footnote text-amber-800">
               Your slot is held while you complete the payment. The gate will not open until this booking is paid.
             </p>
             <Button className="mt-3" loading={processing} onClick={payNow}>
@@ -125,9 +130,9 @@ const BookingDetail = () => {
         )}
 
         {booking.status === 'confirmed' && (
-          <div className="mt-5 rounded-lg bg-emerald-50 p-4 ring-1 ring-inset ring-emerald-200">
-            <p className="text-sm font-medium text-emerald-900">You are ready to park.</p>
-            <p className="mt-1 text-sm text-emerald-800">
+          <div className="mt-5 rounded-control bg-emerald-50 p-4 ring-1 ring-inset ring-emerald-200">
+            <p className="text-footnote font-medium text-emerald-900">You are ready to park.</p>
+            <p className="mt-1 text-footnote text-emerald-800">
               Drive up to the entrance of {booking.parkingLot?.name}. The camera will read{' '}
               <strong className="font-mono">{booking.vehicleNumber}</strong> and the barrier will open. No QR code or printout
               is needed.
@@ -137,21 +142,23 @@ const BookingDetail = () => {
       </Card>
 
       <Card title="Price breakdown">
-        <dl className="space-y-2 text-sm">
+        {/* Every figure in a bill is tabular, so the decimal points line up
+            down the column and the total reads as the sum of what is above. */}
+        <dl className="space-y-2 text-footnote tabular-nums">
           {(booking.pricing?.breakdown || []).map((line) => (
             <div key={line.label} className="flex justify-between gap-4">
-              <dt className="text-ink-500">{line.label}</dt>
-              <dd className="text-ink-900">{money(line.amount)}</dd>
+              <dt className="text-label-secondary">{line.label}</dt>
+              <dd className="text-label">{money(line.amount)}</dd>
             </div>
           ))}
-          <div className="flex justify-between gap-4 border-t border-slate-200 pt-2 font-semibold">
-            <dt className="text-ink-900">Total</dt>
-            <dd className="text-ink-900">{money(booking.pricing?.amount)}</dd>
+          <div className="flex justify-between gap-4 border-t border-separator pt-2.5">
+            <dt className="text-headline text-label">Total</dt>
+            <dd className="text-headline text-label">{money(booking.pricing?.amount)}</dd>
           </div>
         </dl>
 
         {booking.pricing?.multipliers && (
-          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 text-xs sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-separator pt-4 text-caption sm:grid-cols-4">
             {[
               ['Occupancy', booking.pricing.multipliers.occupancy],
               ['Peak hours', booking.pricing.multipliers.peakHour],
@@ -159,8 +166,8 @@ const BookingDetail = () => {
               ['Day of week', booking.pricing.multipliers.dayOfWeek],
             ].map(([label, value]) => (
               <div key={label}>
-                <p className="uppercase tracking-wide text-ink-500">{label}</p>
-                <p className="mt-0.5 font-semibold text-ink-900">&times;{value}</p>
+                <p className="eyebrow text-label-tertiary">{label}</p>
+                <p className="mt-1 font-semibold tabular-nums text-label">&times;{value}</p>
               </div>
             ))}
           </div>
@@ -191,26 +198,26 @@ const BookingDetail = () => {
           />
 
           {receipt && (
-            <div className="mt-5 rounded-lg border border-slate-200 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Final bill</p>
-              <dl className="mt-2 space-y-1.5 text-sm">
+            <div className="mt-5 rounded-control border border-separator p-4">
+              <p className="eyebrow text-label-tertiary">Final bill</p>
+              <dl className="mt-2.5 space-y-1.5 text-footnote tabular-nums">
                 {(receipt.breakdown || []).map((line, index) => (
                   <div key={`${line.label}-${index}`} className="flex justify-between gap-4">
-                    <dt className="text-ink-500">{line.label}</dt>
-                    <dd className="text-ink-900">{money(line.amount)}</dd>
+                    <dt className="text-label-secondary">{line.label}</dt>
+                    <dd className="text-label">{money(line.amount)}</dd>
                   </div>
                 ))}
-                <div className="flex justify-between gap-4 border-t border-slate-200 pt-2 font-semibold">
-                  <dt>Total</dt>
-                  <dd>{money(receipt.charges.total)}</dd>
+                <div className="flex justify-between gap-4 border-t border-separator pt-2.5">
+                  <dt className="text-headline text-label">Total</dt>
+                  <dd className="text-headline text-label">{money(receipt.charges.total)}</dd>
                 </div>
               </dl>
             </div>
           )}
 
           {session.billing?.amountDue > 0 && (
-            <div className="mt-4 rounded-lg bg-rose-50 p-4 ring-1 ring-inset ring-rose-200">
-              <p className="text-sm font-medium text-rose-900">
+            <div className="mt-4 rounded-control bg-rose-50 p-4 ring-1 ring-inset ring-rose-200">
+              <p className="text-footnote font-medium text-rose-900">
                 {money(session.billing.amountDue)} is outstanding for overstaying.
               </p>
               <Button className="mt-3" tone="danger" loading={processing} onClick={paySessionDue}>
@@ -223,11 +230,11 @@ const BookingDetail = () => {
 
       {booking.fraudFlags?.length > 0 && (
         <Card title="Security notices">
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-2 text-footnote">
             {booking.fraudFlags.map((flag, index) => (
-              <li key={index} className="rounded-lg bg-rose-50 px-3 py-2 text-rose-800 ring-1 ring-inset ring-rose-200">
+              <li key={index} className="rounded-control bg-rose-50 px-3 py-2 text-rose-800 ring-1 ring-inset ring-rose-200">
                 <p className="font-medium">{flag.detail}</p>
-                <p className="text-xs">
+                <p className="text-caption">
                   {dateTime(flag.at)}
                   {flag.similarity !== undefined ? ` · plate similarity ${(flag.similarity * 100).toFixed(0)}%` : ''}
                 </p>

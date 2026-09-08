@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import HeroBand from '../../components/HeroBand';
+import Icon from '../../components/Icon';
+import { LinkButton } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 
 /**
@@ -67,18 +69,12 @@ const AdminLanding = () => {
         title={firstName ? `Welcome back, ${firstName}` : 'Platform administration'}
         actions={
           <>
-            <Link
-              to="/admin"
-              className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-ink-900 shadow-lg shadow-black/20 transition hover:bg-slate-100"
-            >
+            <LinkButton to="/admin" tone="light" size="lg">
               Open dashboard
-            </Link>
-            <Link
-              to="/admin/facilities"
-              className="rounded-xl px-5 py-3 text-sm font-semibold text-white ring-1 ring-inset ring-white/30 transition hover:bg-white/10"
-            >
+            </LinkButton>
+            <LinkButton to="/admin/facilities" tone="ghostLight" size="lg">
               Review facilities
-            </Link>
+            </LinkButton>
           </>
         }
       >
@@ -90,41 +86,41 @@ const AdminLanding = () => {
 
       <section className="mt-12">
         <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-600">Your remit</p>
-          <h2 className="mt-3 text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">Five things only you can do</h2>
+          <p className="eyebrow text-accent-600">Your remit</p>
+          <h2 className="mt-3.5 text-title-1 text-label">Five things only you can do</h2>
         </div>
 
         <div className="mt-9 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {DUTIES.map((duty) => (
             <article
               key={duty.title}
-              className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-violet-200 hover:shadow-md"
+              className="tap-lift flex flex-col rounded-card border border-separator bg-surface p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:border-violet-200 hover:shadow-[0_2px_4px_rgba(0,0,0,0.05),0_12px_32px_-12px_rgba(0,0,0,0.18)]"
             >
-              <h3 className="text-base font-semibold text-ink-900">{duty.title}</h3>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-ink-500">{duty.copy}</p>
+              <h3 className="text-title-3 text-label">{duty.title}</h3>
+              <p className="mt-2 flex-1 text-footnote leading-relaxed text-label-secondary">{duty.copy}</p>
               <Link
                 to={duty.to}
-                className="mt-4 inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-violet-700 transition hover:text-violet-800"
+                className="tap mt-5 -ml-2 inline-flex w-fit items-center gap-1.5 rounded-capsule px-2 py-1 text-footnote font-semibold text-violet-700 hover:bg-violet-50"
               >
                 {duty.action}
-                <span aria-hidden="true">&rarr;</span>
+                <Icon name="forward" size={3.5} />
               </Link>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="mt-14 rounded-3xl bg-ink-900 p-6 text-white sm:p-10">
+      <section className="mt-14 panel-dark rounded-sheet p-6 sm:p-10">
         <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">Judgement calls</p>
-          <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">Three that come up constantly</h2>
+          <p className="eyebrow text-violet-300">Judgement calls</p>
+          <h2 className="mt-3.5 text-title-1">Three that come up constantly</h2>
         </div>
 
         <div className="mt-9 grid gap-7 md:grid-cols-3">
           {PRINCIPLES.map((item) => (
             <div key={item.title} className="border-l-2 border-violet-400 pl-5">
-              <h3 className="text-sm font-semibold">{item.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-white/70">{item.copy}</p>
+              <h3 className="text-headline">{item.title}</h3>
+              <p className="mt-2 text-footnote leading-relaxed text-white/70">{item.copy}</p>
             </div>
           ))}
         </div>

@@ -5,25 +5,13 @@ import DetailRow from '../../components/DetailRow';
 import { Alert, Button, Card, Field, Input, Spinner } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { dateOnly } from '../../utils/format';
+import Icon from '../../components/Icon';
 
 /**
  * Owner profile. Same shape as the driver's - read-only rows, each with its own
  * edit - but split across the two records an owner has: the person who signs
  * in, and the business that gets paid.
  */
-
-const ICONS = {
-  camera:
-    'M4.5 8.5h3l1.5-2.2h6L16.5 8.5h3A1.5 1.5 0 0 1 21 10v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18v-8a1.5 1.5 0 0 1 1.5-1.5Zm7.5 3.2a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Z',
-  alert: 'M12 8.5v5m0 3h.01M10.3 3.9 2.6 17.4A2 2 0 0 0 4.3 20.4h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z',
-  check: 'M5 12.5l4.5 4.5L19 7.5',
-};
-
-const Icon = ({ name, className = 'h-4 w-4' }) => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none">
-    <path d={ICONS[name]} stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
 
 const FIELD_LABELS = {
   firstName: 'first name',
@@ -143,30 +131,30 @@ const Profile = () => {
   return (
     <div>
       {/* ---- Header band ---- */}
-      <section className="relative isolate -mx-4 -mt-8 overflow-hidden sm:-mx-6">
+      <section className="band-teal relative isolate -mx-4 -mt-8 overflow-hidden sm:-mx-6">
         <img
           src="/hero-garage.jpg"
           alt=""
           aria-hidden="true"
+          width="1600"
+          height="500"
+          decoding="async"
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
+        <div aria-hidden="true" className="band-wash absolute inset-0" />
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-[linear-gradient(110deg,rgba(3,20,26,0.95)_0%,rgba(6,38,48,0.85)_55%,rgba(5,26,34,0.75)_100%)]"
-        />
-        <div
-          aria-hidden="true"
-          className="parkar-pulse absolute -right-20 top-6 h-2 w-1/2 rotate-[8deg] rounded-full bg-[linear-gradient(270deg,transparent,#34d399,#a7f3d0)] blur-[3px]"
+          className="parkar-pulse band-strip absolute -right-20 top-6 h-2 w-1/2 rotate-[8deg] rounded-capsule blur-[3px]"
         />
 
         <div className="relative mx-auto flex max-w-7xl flex-wrap items-center gap-5 px-4 py-10 sm:px-6 sm:py-12">
           <div className="relative">
             {user.avatarUrl ? (
-              <img src={user.avatarUrl} alt="" className="h-24 w-24 rounded-2xl object-cover ring-4 ring-white/20" />
+              <img src={user.avatarUrl} alt="" className="h-24 w-24 rounded-card object-cover ring-4 ring-white/20" />
             ) : (
               <span
                 aria-hidden="true"
-                className="grid h-24 w-24 place-items-center rounded-2xl bg-emerald-600 text-2xl font-bold text-white ring-4 ring-white/20"
+                className="grid h-24 w-24 place-items-center rounded-card bg-emerald-600 text-title-3 font-bold text-white ring-4 ring-white/25"
               >
                 {initialsOf(user.name)}
               </span>
@@ -178,15 +166,15 @@ const Profile = () => {
               disabled={uploading}
               aria-label={user.avatarUrl ? 'Change profile picture' : 'Upload a profile picture'}
               title={user.avatarUrl ? 'Change profile picture' : 'Upload a profile picture'}
-              className="absolute -bottom-2 -right-2 grid h-9 w-9 place-items-center rounded-xl bg-white text-ink-900 shadow-lg transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400"
+              className="absolute -bottom-2 -right-2 grid h-9 w-9 place-items-center rounded-control bg-white text-[#1C1C1E] shadow-lg transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {uploading ? (
                 <span
                   aria-hidden="true"
-                  className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                  className="h-4 w-4 animate-spin rounded-capsule border-2 border-current border-t-transparent"
                 />
               ) : (
-                <Icon name="camera" className="h-4.5 w-4.5" />
+                <Icon name="camera" size={4.5} />
               )}
             </button>
             <input
@@ -201,26 +189,26 @@ const Profile = () => {
           </div>
 
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{user.name}</h1>
-            <p className="mt-1 truncate text-sm text-slate-200/80">{user.email}</p>
+            <h1 className="text-title-1 text-white">{user.name}</h1>
+            <p className="mt-1 truncate text-footnote text-white/70">{user.email}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {complete ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-medium text-emerald-200 ring-1 ring-inset ring-emerald-300/30">
-                  <Icon name="check" className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-1.5 rounded-capsule bg-mint/15 px-3 py-1 text-caption font-medium text-mint ring-1 ring-inset ring-mint/30">
+                  <Icon name="check" size={3.5} />
                   Profile complete
                 </span>
               ) : (
-                <span className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-medium text-amber-100 ring-1 ring-inset ring-amber-300/30">
+                <span className="rounded-capsule bg-gold/15 px-3 py-1 text-caption font-medium text-gold ring-1 ring-inset ring-gold/30">
                   {missing.length} detail{missing.length > 1 ? 's' : ''} missing
                 </span>
               )}
               {profile?.isVerified ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white ring-1 ring-inset ring-white/20">
-                  <Icon name="check" className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-1.5 rounded-capsule bg-white/10 px-3 py-1 text-caption font-medium text-white ring-1 ring-inset ring-white/20">
+                  <Icon name="check" size={3.5} />
                   Business verified{profile.verifiedAt ? ` · ${dateOnly(profile.verifiedAt)}` : ''}
                 </span>
               ) : (
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/80 ring-1 ring-inset ring-white/20">
+                <span className="rounded-capsule bg-white/10 px-3 py-1 text-caption font-medium text-white/80 ring-1 ring-inset ring-white/20">
                   Business awaiting verification
                 </span>
               )}
@@ -231,13 +219,13 @@ const Profile = () => {
 
       <div className="mx-auto mt-8 max-w-3xl space-y-4">
         {!complete && (
-          <div className="flex items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700">
-              <Icon name="alert" className="h-5 w-5" />
+          <div className="flex items-start gap-4 rounded-card border border-amber-200 bg-amber-50 p-5 shadow-sm">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-control bg-amber-100 text-amber-700">
+              <Icon name="alert" size={5} />
             </span>
             <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-amber-900">Your profile is not complete</h2>
-              <p className="mt-1 text-sm leading-relaxed text-amber-800/85">
+              <h2 className="text-headline text-amber-900">Your profile is not complete</h2>
+              <p className="mt-1 text-footnote leading-relaxed text-amber-800/85">
                 Still to add: {missing.map((field) => FIELD_LABELS[field] || field).join(', ')}. Drivers and platform
                 admins see this when they look up who runs a facility.
               </p>
@@ -397,7 +385,7 @@ const Profile = () => {
             </form>
           ) : (
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-ink-500">Last changed is not tracked.</p>
+              <p className="text-footnote text-label-secondary">Last changed is not tracked.</p>
               <Button size="sm" tone="secondary" onClick={() => setPasswordOpen(true)}>
                 Change
               </Button>

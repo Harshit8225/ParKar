@@ -42,23 +42,42 @@ export const statusLabel = (status) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 
-/** Tailwind classes per status, so a badge colour never has to be chosen inline. */
-export const statusTone = (status) =>
-  ({
-    confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    active: 'bg-blue-50 text-blue-700 ring-blue-200',
-    completed: 'bg-slate-100 text-slate-600 ring-slate-200',
-    closed: 'bg-slate-100 text-slate-600 ring-slate-200',
-    pending_payment: 'bg-amber-50 text-amber-700 ring-amber-200',
-    payment_failed: 'bg-rose-50 text-rose-700 ring-rose-200',
-    approved: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    pending: 'bg-amber-50 text-amber-700 ring-amber-200',
-    rejected: 'bg-rose-50 text-rose-700 ring-rose-200',
-    deactivated: 'bg-slate-100 text-slate-500 ring-slate-200',
-    paid: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    failed: 'bg-rose-50 text-rose-700 ring-rose-200',
-    created: 'bg-slate-100 text-slate-600 ring-slate-200',
-  })[status] || 'bg-slate-100 text-slate-600 ring-slate-200';
+/**
+ * Badge classes per status, so a status colour is never chosen inline.
+ *
+ * There are only five meanings here, so they are named once and the statuses
+ * map onto them. Previously each of the thirteen statuses spelled out its own
+ * class string, which is how `deactivated` ended up a slightly different grey
+ * from `completed` for no reason.
+ *
+ * The ramps invert in dark mode (see index.css), so one string is correct in
+ * both themes.
+ */
+const TONES = {
+  good: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  live: 'bg-brand-50 text-brand-700 ring-brand-200',
+  waiting: 'bg-amber-50 text-amber-700 ring-amber-200',
+  bad: 'bg-rose-50 text-rose-700 ring-rose-200',
+  idle: 'bg-slate-100 text-label-secondary ring-slate-200',
+};
+
+const STATUS_TONES = {
+  confirmed: 'good',
+  approved: 'good',
+  paid: 'good',
+  active: 'live',
+  completed: 'idle',
+  closed: 'idle',
+  created: 'idle',
+  deactivated: 'idle',
+  pending: 'waiting',
+  pending_payment: 'waiting',
+  payment_failed: 'bad',
+  rejected: 'bad',
+  failed: 'bad',
+};
+
+export const statusTone = (status) => TONES[STATUS_TONES[status]] || TONES.idle;
 
 /** Format an <input type="datetime-local"> value from a Date, in local time. */
 export const toLocalInputValue = (date) => {

@@ -59,27 +59,39 @@ const Register = () => {
   };
 
   return (
-    <div className="flex min-h-full items-center justify-center px-4 py-10">
+    <div className="relative isolate flex min-h-full items-center justify-center px-4 py-12">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 bg-[radial-gradient(60%_100%_at_50%_0%,color-mix(in_oklab,var(--tint)_18%,transparent)_0%,transparent_100%)]"
+      />
+
       <div className="w-full max-w-lg">
-        <div className="mb-6 text-center">
+        <div className="mb-8 text-center">
           <Link to="/" className="inline-flex" aria-label="ParKar home">
             <Brand size="md" className="justify-center" />
           </Link>
-          <h1 className="mt-3 text-2xl font-semibold text-ink-900">Create your account</h1>
-          <p className="mt-1 text-sm text-ink-500">Drivers book parking; owners list facilities.</p>
+          <h1 className="mt-4 text-title-2 text-label">Create your account</h1>
+          <p className="mt-2 text-callout text-label-secondary">Drivers book parking; owners list facilities.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5 rounded-sheet border border-separator bg-surface p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_24px_64px_-24px_rgba(0,0,0,0.18)]"
+        >
           {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
 
           <fieldset>
-            <legend className="mb-2 text-sm font-medium text-ink-700">I am registering as</legend>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <legend className="mb-2.5 text-footnote font-medium text-label">I am registering as</legend>
+            <div className="grid gap-2.5 sm:grid-cols-2">
               {ROLE_OPTIONS.map((option) => (
+                // A card inside the form card (22px) with ~10px of gap, so the
+                // concentric rule puts this at 14px.
                 <label
                   key={option.value}
-                  className={`cursor-pointer rounded-lg border p-3 transition ${
-                    form.role === option.value ? 'border-brand-500 bg-brand-50' : 'border-slate-300 hover:bg-slate-50'
+                  className={`tap cursor-pointer rounded-control border p-3.5 ${
+                    form.role === option.value
+                      ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20'
+                      : 'border-separator-strong hover:bg-slate-50'
                   }`}
                 >
                   <input
@@ -90,8 +102,8 @@ const Register = () => {
                     onChange={update('role')}
                     className="sr-only"
                   />
-                  <span className="block text-sm font-medium text-ink-900">{option.title}</span>
-                  <span className="mt-0.5 block text-xs text-ink-500">{option.description}</span>
+                  <span className="block text-footnote font-medium text-label">{option.title}</span>
+                  <span className="mt-0.5 block text-caption text-label-secondary">{option.description}</span>
                 </label>
               ))}
             </div>
@@ -111,8 +123,8 @@ const Register = () => {
           </div>
 
           {form.role === 'owner' && (
-            <div className="space-y-4 rounded-lg bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">Business details</p>
+            <div className="space-y-4 rounded-control bg-slate-50 p-4">
+              <p className="eyebrow text-label-tertiary">Business details</p>
               <Field label="Business name" required>
                 <Input value={form.businessName} onChange={update('businessName')} required minLength={2} />
               </Field>
@@ -157,7 +169,7 @@ const Register = () => {
             Create account
           </Button>
 
-          <p className="text-center text-sm text-ink-500">
+          <p className="text-center text-footnote text-label-secondary">
             Already registered?{' '}
             <Link to="/login" className="font-medium text-brand-700 hover:underline">
               Sign in

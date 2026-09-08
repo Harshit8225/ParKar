@@ -3,7 +3,18 @@ import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { errorMessage } from '../../api/client';
 import { analyticsApi } from '../../api/endpoints';
-import { Alert, Card, Field, Select, Spinner, StatCard, Table, Td } from '../../components/ui';
+import { axisTick, gridStroke, series, tooltipLabelStyle, tooltipStyle } from '../../utils/chartTheme';
+import {
+  Alert,
+  Card,
+  Field,
+  PageHeader,
+  Select,
+  Spinner,
+  StatCard,
+  Table,
+  Td,
+} from '../../components/ui';
 import { duration, money, percent } from '../../utils/format';
 
 const RANGES = [
@@ -13,8 +24,6 @@ const RANGES = [
   { value: '90d', label: 'Last 90 days' },
   { value: 'all', label: 'All time' },
 ];
-
-const chartAxis = { stroke: '#94a3b8', fontSize: 11 };
 
 const Dashboard = () => {
   const [range, setRange] = useState('30d');
@@ -39,21 +48,22 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-ink-900">Platform overview</h1>
-          <p className="text-sm text-ink-500">Activity across every facility and account on the platform.</p>
-        </div>
-        <Field label="Period" className="w-48">
-          <Select value={range} onChange={(event) => setRange(event.target.value)}>
-            {RANGES.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
+      <PageHeader
+        eyebrow="Platform admin"
+        title="Platform overview"
+        subtitle="Activity across every facility and account on the platform."
+        actions={
+          <Field label="Period" className="w-48">
+            <Select value={range} onChange={(event) => setRange(event.target.value)}>
+              {RANGES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        }
+      />
 
       {data.pendingApprovals > 0 && (
         <Alert kind="warning">
@@ -78,18 +88,18 @@ const Dashboard = () => {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dailySeries} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="date" tick={chartAxis} tickFormatter={(value) => value.slice(5)} />
-                <YAxis tick={chartAxis} />
-                <Tooltip formatter={(value) => money(value)} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                <Line type="monotone" dataKey="revenue" stroke="#1f43ec" strokeWidth={2} dot={false} name="Revenue" />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="date" tick={axisTick} tickFormatter={(value) => value.slice(5)} />
+                <YAxis tick={axisTick} />
+                <Tooltip formatter={(value) => money(value)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
+                <Line type="monotone" dataKey="revenue" stroke={series[0]} strokeWidth={2} dot={false} name="Revenue" />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
         <Card title="Platform totals">
-          <dl className="space-y-2.5 text-sm">
+          <dl className="space-y-2.5 text-footnote">
             {[
               ['Gross revenue (all time)', money(revenue.allTime.gross)],
               ['Commission earned', money(revenue.allTime.platformCommission)],
@@ -101,9 +111,9 @@ const Dashboard = () => {
               ['Platform occupancy', percent(occupancy.occupancyRate)],
               ['Free slots now', occupancy.totalAvailable],
             ].map(([label, value]) => (
-              <div key={label} className="flex justify-between gap-4 border-b border-slate-100 pb-2 last:border-0">
-                <dt className="text-ink-500">{label}</dt>
-                <dd className="font-semibold text-ink-900">{value}</dd>
+              <div key={label} className="flex justify-between gap-4 border-b border-separator pb-2 last:border-0">
+                <dt className="text-label-secondary">{label}</dt>
+                <dd className="font-semibold tabular-nums text-label">{value}</dd>
               </div>
             ))}
           </dl>
@@ -115,11 +125,11 @@ const Dashboard = () => {
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={peakHours} margin={{ top: 5, right: 5, bottom: 0, left: -25 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="hour" tick={chartAxis} interval={2} />
-                <YAxis tick={chartAxis} allowDecimals={false} />
-                <Tooltip labelFormatter={(hour) => `${String(hour).padStart(2, '0')}:00`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                <Bar dataKey="entries" fill="#598bff" radius={[3, 3, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                <XAxis dataKey="hour" tick={axisTick} interval={2} />
+                <YAxis tick={axisTick} allowDecimals={false} />
+                <Tooltip labelFormatter={(hour) => `${String(hour).padStart(2, '0')}:00`} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
+                <Bar dataKey="entries" fill={series[0]} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -129,7 +139,7 @@ const Dashboard = () => {
           <Table headers={['Facility', 'City', 'Revenue', 'Transactions']}>
             {topLots.length === 0 ? (
               <tr>
-                <Td className="text-ink-500" >No revenue recorded in this period.</Td>
+                <Td className="text-label-secondary" >No revenue recorded in this period.</Td>
               </tr>
             ) : (
               topLots.map((lot) => (

@@ -13,7 +13,22 @@ import {
 } from 'recharts';
 import { errorMessage } from '../../api/client';
 import { analyticsApi } from '../../api/endpoints';
-import { Alert, Badge, Card, EmptyState, Field, Select, Spinner, StatCard, Table, Td } from '../../components/ui';
+import {
+  Alert,
+  Badge,
+  Card,
+  EmptyState,
+  Field,
+  LinkButton,
+  Meter,
+  PageHeader,
+  Select,
+  Spinner,
+  StatCard,
+  Table,
+  Td,
+} from '../../components/ui';
+import { axisTick, gridStroke, series, tooltipLabelStyle, tooltipStyle } from '../../utils/chartTheme';
 import { duration, money, percent } from '../../utils/format';
 
 const RANGES = [
@@ -22,8 +37,6 @@ const RANGES = [
   { value: '30d', label: 'Last 30 days' },
   { value: '90d', label: 'Last 90 days' },
 ];
-
-const chartAxis = { stroke: '#94a3b8', fontSize: 11 };
 
 const Dashboard = () => {
   const [range, setRange] = useState('30d');
@@ -48,23 +61,22 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-ink-900">Facility analytics</h1>
-          <p className="text-sm text-ink-500">
-            Across {data.lotCount} facilit{data.lotCount === 1 ? 'y' : 'ies'}.
-          </p>
-        </div>
-        <Field label="Period" className="w-48">
-          <Select value={range} onChange={(event) => setRange(event.target.value)}>
-            {RANGES.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
+      <PageHeader
+        eyebrow="Parking owner"
+        title="Facility analytics"
+        subtitle={`Across ${data.lotCount} facilit${data.lotCount === 1 ? 'y' : 'ies'}.`}
+        actions={
+          <Field label="Period" className="w-48">
+            <Select value={range} onChange={(event) => setRange(event.target.value)}>
+              {RANGES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        }
+      />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
 
@@ -74,9 +86,7 @@ const Dashboard = () => {
             title="No facilities yet"
             description="Register your first parking facility. A platform administrator will review and approve it."
             action={
-              <Link to="/owner/lots/new" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
-                Register a facility
-              </Link>
+              <LinkButton to="/owner/lots/new" icon="plus">Register a facility</LinkButton>
             }
           />
         </Card>
@@ -96,14 +106,15 @@ const Dashboard = () => {
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={dailySeries} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                    <XAxis dataKey="date" tick={chartAxis} tickFormatter={(value) => value.slice(5)} />
-                    <YAxis tick={chartAxis} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                    <XAxis dataKey="date" tick={axisTick} tickFormatter={(value) => value.slice(5)} />
+                    <YAxis tick={axisTick} />
                     <Tooltip
                       formatter={(value, name) => (name === 'revenue' ? money(value) : value)}
-                      contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                      contentStyle={tooltipStyle}
+                      labelStyle={tooltipLabelStyle}
                     />
-                    <Line type="monotone" dataKey="revenue" stroke="#1f43ec" strokeWidth={2} dot={false} name="revenue" />
+                    <Line type="monotone" dataKey="revenue" stroke={series[0]} strokeWidth={2} dot={false} name="revenue" />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -113,14 +124,15 @@ const Dashboard = () => {
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={peakHours} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                    <XAxis dataKey="hour" tick={chartAxis} interval={3} />
-                    <YAxis tick={chartAxis} allowDecimals={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                    <XAxis dataKey="hour" tick={axisTick} interval={3} />
+                    <YAxis tick={axisTick} allowDecimals={false} />
                     <Tooltip
                       labelFormatter={(hour) => `${String(hour).padStart(2, '0')}:00`}
-                      contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                      contentStyle={tooltipStyle}
+                      labelStyle={tooltipLabelStyle}
                     />
-                    <Bar dataKey="entries" fill="#598bff" radius={[3, 3, 0, 0]} name="entries" />
+                    <Bar dataKey="entries" fill={series[0]} radius={[3, 3, 0, 0]} name="entries" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -129,16 +141,16 @@ const Dashboard = () => {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Card title="Earnings summary" className="lg:col-span-1">
-              <dl className="space-y-3 text-sm">
+              <dl className="space-y-3 text-footnote">
                 {[
                   ['Gross revenue (all time)', money(revenue.allTime.gross)],
                   ['Platform commission', money(revenue.allTime.platformCommission)],
                   ['Your earnings', money(revenue.allTime.ownerEarning)],
                   ['Transactions', revenue.allTime.transactionCount],
                 ].map(([label, value]) => (
-                  <div key={label} className="flex items-baseline justify-between gap-4 border-b border-slate-100 pb-2 last:border-0">
-                    <dt className="text-ink-500">{label}</dt>
-                    <dd className="font-semibold text-ink-900">{value}</dd>
+                  <div key={label} className="flex items-baseline justify-between gap-4 border-b border-separator pb-2 last:border-0">
+                    <dt className="text-label-secondary">{label}</dt>
+                    <dd className="font-semibold tabular-nums text-label">{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -160,23 +172,16 @@ const Dashboard = () => {
                       <Badge status={lot.status} />
                     </Td>
                     <Td>
-                      <div className="flex items-center gap-2">
-                        <span className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
-                          <span
-                            className={`block h-full rounded-full ${
-                              lot.occupancyRate > 85 ? 'bg-rose-500' : lot.occupancyRate > 60 ? 'bg-amber-500' : 'bg-emerald-500'
-                            }`}
-                            style={{ width: `${Math.min(100, lot.occupancyRate)}%` }}
-                          />
-                        </span>
-                        <span className="text-xs">{percent(lot.occupancyRate, 0)}</span>
+                      <div className="flex items-center gap-2.5">
+                        <Meter value={lot.occupancyRate} className="w-16" />
+                        <span className="text-caption tabular-nums">{percent(lot.occupancyRate, 0)}</span>
                       </div>
                     </Td>
-                    <Td>
+                    <Td className="tabular-nums">
                       {lot.available.two_wheeler} / {lot.available.four_wheeler}
                     </Td>
                     <Td>
-                      <Link to={`/owner/lots/${lot.id}`} className="text-sm font-medium text-brand-700 hover:underline">
+                      <Link to={`/owner/lots/${lot.id}`} className="tap rounded-capsule px-2.5 py-1 text-footnote font-medium text-brand-700 hover:bg-brand-50">
                         Manage
                       </Link>
                     </Td>

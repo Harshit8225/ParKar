@@ -12,6 +12,7 @@ import {
   Input,
   KeyValue,
   Modal,
+  PageHeader,
   Pagination,
   Select,
   Spinner,
@@ -104,10 +105,7 @@ const Facilities = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-ink-900">Parking facilities</h1>
-        <p className="text-sm text-ink-500">Approve new facilities, and deactivate ones that must stop taking bookings.</p>
-      </div>
+      <PageHeader eyebrow="Platform admin" title="Parking facilities" subtitle="Approve new facilities, and deactivate ones that must stop taking bookings." />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
       {notice && <Alert kind="success" onDismiss={() => setNotice('')}>{notice}</Alert>}
@@ -147,12 +145,12 @@ const Facilities = () => {
               {data.items.map((lot) => (
                 <tr key={lot.id} className="hover:bg-slate-50">
                   <Td>
-                    <span className="block max-w-[15rem] truncate font-medium text-ink-900">{lot.name}</span>
-                    <span className="block max-w-[15rem] truncate text-xs text-ink-500">{lot.location.address}</span>
+                    <span className="block max-w-[15rem] truncate font-medium text-label">{lot.name}</span>
+                    <span className="block max-w-[15rem] truncate text-caption text-label-secondary">{lot.location.address}</span>
                   </Td>
                   <Td>
                     <span className="block max-w-[11rem] truncate">{lot.owner?.name || '-'}</span>
-                    <span className="block max-w-[11rem] truncate text-xs text-ink-500">{lot.owner?.email}</span>
+                    <span className="block max-w-[11rem] truncate text-caption text-label-secondary">{lot.owner?.email}</span>
                   </Td>
                   <Td>{lot.location.city}</Td>
                   <Td>

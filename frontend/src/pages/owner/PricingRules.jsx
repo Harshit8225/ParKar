@@ -4,6 +4,7 @@ import { errorMessage } from '../../api/client';
 import { pricingApi } from '../../api/endpoints';
 import { Alert, Button, Card, Checkbox, Field, Input, Select, Spinner } from '../../components/ui';
 import { money } from '../../utils/format';
+import { axisTick, gridStroke, series, tooltipLabelStyle, tooltipStyle } from '../../utils/chartTheme';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -149,18 +150,18 @@ const PricingRules = ({ lotId, lot }) => {
         <div className="mt-4 h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={curve} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-              <XAxis dataKey="label" tick={{ stroke: '#94a3b8', fontSize: 11 }} interval={2} />
-              <YAxis tick={{ stroke: '#94a3b8', fontSize: 11 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+              <XAxis dataKey="label" tick={axisTick} interval={2} />
+              <YAxis tick={axisTick} />
               <Tooltip
                 formatter={(value, name) => (name === 'ratePerHour' ? [money(value), 'Rate/hour'] : [value, name])}
-                contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle}
               />
-              <Line type="stepAfter" dataKey="ratePerHour" stroke="#1f43ec" strokeWidth={2} dot={false} name="ratePerHour" />
+              <Line type="stepAfter" dataKey="ratePerHour" stroke={series[0]} strokeWidth={2} dot={false} name="ratePerHour" />
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <p className="mt-2 text-xs text-ink-500">
+        <p className="mt-2 text-caption text-label-secondary">
           Simulation reflects the saved rules. Save your changes to see them here.
         </p>
       </Card>
@@ -189,7 +190,7 @@ const PricingRules = ({ lotId, lot }) => {
                   onChange={(event) => updateTier(index, 'multiplier', event.target.value)}
                 />
               </Field>
-              <div className="pb-2 text-sm text-ink-500">
+              <div className="pb-2 text-footnote text-label-secondary">
                 {lot?.hourlyRate?.[simVehicleType]
                   ? `${money(lot.hourlyRate[simVehicleType] * tier.multiplier)}/hr at this tier`
                   : null}
@@ -197,7 +198,7 @@ const PricingRules = ({ lotId, lot }) => {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs text-ink-500">
+        <p className="mt-3 text-caption text-label-secondary">
           Tiers are matched in ascending order; the highest tier must reach 100% occupancy.
         </p>
       </Card>
@@ -220,11 +221,11 @@ const PricingRules = ({ lotId, lot }) => {
         }
       >
         {rule.peakHours.length === 0 ? (
-          <p className="text-sm text-ink-500">No peak windows configured. Prices stay flat across the day.</p>
+          <p className="text-footnote text-label-secondary">No peak windows configured. Prices stay flat across the day.</p>
         ) : (
           <div className="space-y-4">
             {rule.peakHours.map((window, index) => (
-              <div key={index} className="rounded-lg border border-slate-200 p-4">
+              <div key={index} className="rounded-control border border-separator p-4">
                 <div className="grid gap-3 sm:grid-cols-4">
                   <Field label="Label">
                     <Input value={window.label || ''} onChange={(event) => updateWindow(index, 'label', event.target.value)} />
@@ -248,7 +249,7 @@ const PricingRules = ({ lotId, lot }) => {
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <span className="text-xs font-medium uppercase tracking-wide text-ink-500">Applies on</span>
+                  <span className="eyebrow text-label-tertiary">Applies on</span>
                   {DAYS.map((day, dayIndex) => (
                     <Checkbox
                       key={day}
@@ -257,7 +258,7 @@ const PricingRules = ({ lotId, lot }) => {
                       onChange={() => toggleWindowDay(index, dayIndex)}
                     />
                   ))}
-                  <span className="text-xs text-ink-500">{(window.days || []).length === 0 ? '(every day)' : ''}</span>
+                  <span className="text-caption text-label-secondary">{(window.days || []).length === 0 ? '(every day)' : ''}</span>
                   <Button
                     tone="ghost"
                     size="sm"
