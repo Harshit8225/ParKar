@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { statusLabel, statusTone } from '../utils/format';
 import Icon from './Icon';
@@ -162,9 +163,12 @@ export const Field = ({ label, hint, error, required, children, className = '' }
 const controlClasses =
   'w-full rounded-control border border-separator-strong bg-surface px-3.5 py-2.5 text-callout text-label placeholder:text-label-tertiary transition-[box-shadow,border-color] duration-200 ease-cupertino focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15 disabled:bg-slate-50 disabled:text-label-tertiary';
 
-export const Input = ({ className = '', ...rest }) => (
-  <input className={`${controlClasses} ${className}`} {...rest} />
-);
+// Forwards its ref so a caller can focus or select the field - the gate
+// terminal does exactly that after the camera fills a plate in.
+export const Input = forwardRef(({ className = '', ...rest }, ref) => (
+  <input ref={ref} className={`${controlClasses} ${className}`} {...rest} />
+));
+Input.displayName = 'Input';
 
 export const Select = ({ className = '', children, ...rest }) => (
   <select className={`${controlClasses} ${className}`} {...rest}>

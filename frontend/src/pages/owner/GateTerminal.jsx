@@ -19,28 +19,35 @@ import { dateTime, duration, money, statusLabel } from '../../utils/format';
  * Gate terminal.
  *
  * Captures a frame from the entrance camera (or an uploaded photo) and posts it
- * to the backend, which calls Gemini Vision, matches the plate against a
- * booking, and answers with a gate decision. The image never leaves our
- * backend, and the Gemini key is never in this bundle.
+ * to the backend, which calls Gemini Vision and reads the plate. The image never
+ * leaves our backend, and the Gemini key is never in this bundle.
  *
- * Manual plate entry is the fallback when a plate is genuinely unreadable -
- * recorded as manual in the audit trail.
+ * Reading and deciding are two separate steps on purpose. The read fills the
+ * vehicle number field, the attendant confirms or corrects it, and only then
+ * does the gate act - on the confirmed text, not on a second look at the image.
+ * That way the barrier opens for exactly the plate the attendant approved, and
+ * a misread costs a keystroke instead of a wrongly opened gate.
  */
 const GateTerminal = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const fileInputRef = useRef(null);
+  const plateInputRef = useRef(null);
 
   const [lots, setLots] = useState([]);
   const [lotId, setLotId] = useState('');
   const [mode, setMode] = useState('entry');
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraError, setCameraError] = useState('');
-  const [manualPlate, setManualPlate] = useState('');
+  const [plate, setPlate] = useState('');
+  const [detection, setDetection] = useState(null);
+  const [reading, setReading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  const [submitted, setSubmitted] = useState(null);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [recognitionStatus, setRecognitionStatus] = useState(null);
   const [preview, setPreview] = useState(null);
 
@@ -111,27 +118,37 @@ const GateTerminal = () => {
       reader.readAsDataURL(file);
     });
 
-  const submit = async ({ imageBase64, plate }) => {
-    if (!lotId) {
-      setError('Choose a facility first.');
-      return;
-    }
-    setBusy(true);
+  /** Read a plate out of an image and drop it into the vehicle number field. */
+  const readPlate = async (imageBase64) => {
+    setReading(true);
     setError('');
+    setNotice('');
     setResult(null);
+    setDetection(null);
 
     try {
-      const payload = { parkingLotId: lotId, cameraId: `web-terminal-${mode}` };
-      if (imageBase64) payload.imageBase64 = imageBase64;
-      if (plate) payload.manualPlate = plate;
+      const recognition = await recognitionApi.preview({
+        parkingLotId: lotId || undefined,
+        imageBase64,
+      });
 
-      const response = mode === 'entry' ? await recognitionApi.entry(payload) : await recognitionApi.exit(payload);
-      setResult(response.data);
-      if (plate) setManualPlate('');
+      const read = (recognition?.plate || '').toUpperCase();
+      if (!read) {
+        setPlate('');
+        setNotice('No plate could be read from that image. Type the vehicle number in below.');
+        plateInputRef.current?.focus();
+        return;
+      }
+
+      setDetection(recognition);
+      setPlate(read);
+      // Select the filled-in text so correcting a misread is one keystroke away.
+      plateInputRef.current?.focus();
+      plateInputRef.current?.select();
     } catch (err) {
-      setError(errorMessage(err, 'The gate could not process this vehicle.'));
+      setError(errorMessage(err, 'The plate could not be read from that image.'));
     } finally {
-      setBusy(false);
+      setReading(false);
     }
   };
 
@@ -142,7 +159,7 @@ const GateTerminal = () => {
       return;
     }
     setPreview(frame);
-    await submit({ imageBase64: frame });
+    await readPlate(frame);
   };
 
   const handleUpload = async (event) => {
@@ -151,7 +168,7 @@ const GateTerminal = () => {
     try {
       const dataUrl = await readFile(file);
       setPreview(dataUrl);
-      await submit({ imageBase64: dataUrl });
+      await readPlate(dataUrl);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -159,14 +176,57 @@ const GateTerminal = () => {
     }
   };
 
-  const handleManual = async (event) => {
+  /** Send the confirmed vehicle number to the gate. */
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!manualPlate.trim()) return;
-    setPreview(null);
-    await submit({ plate: manualPlate.trim().toUpperCase() });
+
+    const confirmed = plate.trim().toUpperCase();
+    if (!confirmed) return;
+    if (!lotId) {
+      setError('Choose a facility first.');
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setNotice('');
+    setResult(null);
+    setSubmitted(null);
+
+    try {
+      const payload = {
+        parkingLotId: lotId,
+        cameraId: `web-terminal-${mode}`,
+        manualPlate: confirmed,
+      };
+      const response = mode === 'entry' ? await recognitionApi.entry(payload) : await recognitionApi.exit(payload);
+      setResult(response.data);
+      // The gate acts on the confirmed text, so the backend records it as a
+      // manual entry at 100%. Remember what the camera actually read, so the
+      // decision panel shows the real provenance rather than a hollow 100%.
+      setSubmitted({ plate: confirmed, detection });
+      setPlate('');
+      setDetection(null);
+    } catch (err) {
+      setError(errorMessage(err, 'The gate could not process this vehicle.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const clearPlate = () => {
+    setPlate('');
+    setDetection(null);
+    setNotice('');
+    plateInputRef.current?.focus();
   };
 
   const geminiOff = recognitionStatus && !recognitionStatus.configured;
+  const minConfidence = recognitionStatus?.minConfidence ?? 0.55;
+  const detectedPlate = (detection?.plate || '').toUpperCase();
+  const edited = Boolean(detectedPlate) && plate.trim().toUpperCase() !== detectedPlate;
+  const lowConfidence =
+    detection && typeof detection.confidence === 'number' && detection.confidence < minConfidence;
 
   return (
     <div className="space-y-6">
@@ -178,7 +238,7 @@ const GateTerminal = () => {
       {geminiOff && (
         <Alert kind="warning">
           Vehicle recognition is not configured on this server (no <code>GEMINI_API_KEY</code>). Camera capture will fail;
-          use manual plate entry to test the gate flow.
+          type the vehicle number in by hand to test the gate flow.
         </Alert>
       )}
 
@@ -230,8 +290,8 @@ const GateTerminal = () => {
             <div className="mt-4 flex flex-wrap gap-2">
               {cameraOn ? (
                 <>
-                  <Button onClick={handleCapture} loading={busy} size="lg">
-                    Capture and {mode === 'entry' ? 'admit' : 'release'}
+                  <Button onClick={handleCapture} loading={reading} size="lg">
+                    Capture and read plate
                   </Button>
                   <Button tone="secondary" onClick={stopCamera}>
                     Stop camera
@@ -240,44 +300,100 @@ const GateTerminal = () => {
               ) : (
                 <Button onClick={startCamera}>Start camera</Button>
               )}
-              <Button tone="secondary" onClick={() => fileInputRef.current?.click()} loading={busy}>
+              <Button tone="secondary" onClick={() => fileInputRef.current?.click()} loading={reading}>
                 Upload a photo
               </Button>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
             </div>
+
+            <p className="mt-3 text-caption text-label-secondary">
+              Reading a plate fills in the vehicle number below. Check it, correct it if the camera got it wrong, then open
+              the gate.
+            </p>
           </Card>
 
-          <Card title="Manual plate entry">
-            <form onSubmit={handleManual} className="flex flex-wrap items-end gap-3">
-              <Field label="Vehicle number" className="flex-1 min-w-[12rem]">
+          <Card title="Vehicle number">
+            <form onSubmit={handleSubmit} className="space-y-3">
+              {/* The input and the button are the only two things on this row,
+                  and `items-stretch` makes the shorter one grow to the taller,
+                  so their tops and bottoms line up whatever the label or hint
+                  below is doing. */}
+              <div className="flex flex-wrap items-stretch gap-3">
                 <Input
-                  value={manualPlate}
-                  onChange={(event) => setManualPlate(event.target.value.toUpperCase())}
+                  ref={plateInputRef}
+                  aria-label="Vehicle number"
+                  value={plate}
+                  onChange={(event) => setPlate(event.target.value.toUpperCase())}
                   placeholder="KA01AB1234"
-                  className="font-mono uppercase"
+                  className="min-w-[12rem] flex-1 font-mono uppercase tracking-wider"
                   maxLength={15}
+                  disabled={reading}
                 />
-              </Field>
-              <Button type="submit" loading={busy} disabled={!manualPlate.trim()}>
-                Submit at {mode} gate
-              </Button>
+                <Button
+                  type="submit"
+                  loading={busy}
+                  disabled={reading || !plate.trim()}
+                  size="lg"
+                  className="shrink-0 whitespace-nowrap max-sm:w-full"
+                >
+                  {mode === 'entry' ? 'Admit at entry gate' : 'Release at exit gate'}
+                </Button>
+              </div>
+
+              <p className="text-caption text-label-secondary">
+                {reading
+                  ? 'Reading the number plate...'
+                  : detectedPlate
+                    ? 'Filled in from the camera - edit it if it is wrong.'
+                    : 'Type the vehicle number, or capture a photo above.'}
+              </p>
+
+              {notice && <Alert kind="warning">{notice}</Alert>}
+
+              {detectedPlate && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-label-secondary">
+                  <span>
+                    Camera read <span className="font-mono tracking-wider text-label">{detectedPlate}</span>
+                  </span>
+                  {typeof detection.confidence === 'number' && (
+                    <span className={lowConfidence ? 'text-amber-700' : undefined}>
+                      {(detection.confidence * 100).toFixed(0)}% confidence
+                    </span>
+                  )}
+                  {detection.plausibleFormat === false && <span className="text-amber-700">Unusual plate format</span>}
+                  {edited && <span className="text-brand-700">Corrected before submitting</span>}
+                  <button
+                    type="button"
+                    onClick={clearPlate}
+                    className="tap rounded-capsule underline underline-offset-2 hover:text-label"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
+              {lowConfidence && !edited && (
+                <Alert kind="warning">
+                  The camera was not confident about this read. Check the plate against the vehicle before opening the gate.
+                </Alert>
+              )}
             </form>
           </Card>
         </div>
 
         <div>
-          <GateResult result={result} busy={busy} mode={mode} />
+          <GateResult result={result} busy={busy} mode={mode} submitted={submitted} />
         </div>
       </div>
     </div>
   );
 };
 
-const GateResult = ({ result, busy, mode }) => {
+const GateResult = ({ result, busy, mode, submitted }) => {
   if (busy) {
     return (
       <Card title="Gate decision">
-        <Spinner label="Reading the number plate..." />
+        <Spinner label="Checking the booking..." />
       </Card>
     );
   }
@@ -293,6 +409,12 @@ const GateResult = ({ result, busy, mode }) => {
   }
 
   const allowed = result.allowed;
+
+  // The plate the gate acted on is always the one the operator confirmed, so
+  // the backend's confidence is a flat 1. Report where it actually came from.
+  const cameraRead = (submitted?.detection?.plate || '').toUpperCase();
+  const cameraConfidence = submitted?.detection?.confidence;
+  const corrected = Boolean(cameraRead) && cameraRead !== submitted.plate;
 
   return (
     <Card title="Gate decision" className="lg:sticky lg:top-20">
@@ -314,13 +436,21 @@ const GateResult = ({ result, busy, mode }) => {
             <span className="rounded-control bg-slate-100 px-3.5 py-2 font-mono text-title-3 tracking-wider text-label">
               {result.recognition?.plate || 'UNREADABLE'}
             </span>
-            {result.recognition?.confidence !== undefined && (
-              <span className="text-footnote text-label-secondary">
-                {(result.recognition.confidence * 100).toFixed(0)}% confidence
-              </span>
-            )}
             <Badge status={allowed ? 'confirmed' : 'failed'}>{statusLabel(result.result)}</Badge>
           </div>
+          {submitted && (
+            <p className="mt-1.5 text-caption text-label-secondary">
+              {cameraRead ? (
+                <>
+                  Camera read <span className="font-mono tracking-wider">{cameraRead}</span>
+                  {typeof cameraConfidence === 'number' && ` at ${(cameraConfidence * 100).toFixed(0)}% confidence`}
+                  {corrected ? ', corrected by the operator before opening.' : ', confirmed by the operator.'}
+                </>
+              ) : (
+                'Typed in by the operator - no camera read.'
+              )}
+            </p>
+          )}
           {result.recognition?.matchKind && result.recognition.matchKind !== 'exact' && (
             <p className="mt-1 text-caption text-amber-700">
               Matched approximately ({result.recognition.matchKind}). Logged for review.

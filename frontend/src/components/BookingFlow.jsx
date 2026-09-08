@@ -600,7 +600,10 @@ const BookingFlow = () => {
       <form onSubmit={search} className="p-5 sm:p-7">
         <h2 className="text-title-3 text-label">Book your parking space now</h2>
 
-        <div className="mt-5 grid gap-3.5 lg:grid-cols-[1.5fr_1fr_1fr_1fr_auto] lg:items-end">
+        {/* Two-up from sm, one row from lg. Stacking all five controls into a
+            single column is what used to push this form under the fold on a
+            short laptop screen. */}
+        <div className="mt-5 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr_auto] lg:items-end">
           <div className="block">
             <label htmlFor="parkar-location" className={FIELD_LABEL}>
               Location
@@ -659,7 +662,7 @@ const BookingFlow = () => {
             </select>
           </label>
 
-          <Button type="submit" size="lg" loading={searching} className="w-full lg:w-auto">
+          <Button type="submit" size="lg" loading={searching} className="w-full sm:col-span-2 lg:col-span-1 lg:w-auto">
             {searching ? 'Searching' : 'Find parking'}
           </Button>
         </div>

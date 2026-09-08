@@ -77,14 +77,18 @@ const Landing = () => {
       {/* ---------------------------------------------------------- hero ----
           Sized to one viewport minus the header, and vertically centred, so the
           booking form is always above the fold - it is the point of the page.
-          4rem is the header at its tallest: py-3 plus the 40px avatar button. */}
+          4rem is the header at its tallest: py-3 plus the 40px avatar button.
+
+          That promise only holds if the copy above the form stays short, so the
+          hero runs to a height budget: headline, one eyebrow, one supporting
+          line. Adding a paragraph here costs the form its place on screen. */}
       <section className="relative isolate flex min-h-[calc(100svh-4rem)] flex-col overflow-hidden">
         <HeroScene />
 
-        <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-8 px-4 py-8 sm:px-6 sm:py-10">
+        <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-6 px-4 py-6 sm:px-6 sm:py-8">
           <div className="mx-auto max-w-3xl text-center">
             {isAuthenticated && role === 'user' && (
-              <p className="glass mb-5 inline-flex items-center gap-2 rounded-capsule px-4 py-1.5 text-footnote font-medium text-cyan-100">
+              <p className="glass mb-4 inline-flex items-center gap-2 rounded-capsule px-4 py-1.5 text-footnote font-medium text-cyan-100">
                 <span aria-hidden="true" className="h-1.5 w-1.5 rounded-capsule bg-cyan-300" />
                 Welcome back, {user.name.split(' ')[0]}
               </p>
@@ -96,26 +100,24 @@ const Landing = () => {
               Welcome to <BrandWord tone="light" />
             </h1>
 
-            <p className="eyebrow mt-4 text-cyan-200/90">Your smarter, effortless parking solution</p>
+            <p className="eyebrow mt-3.5 text-cyan-200/90">Your smarter, effortless parking solution</p>
 
-            <p className="mx-auto mt-6 max-w-2xl text-title-3 font-semibold text-white/95 [text-shadow:0_2px_16px_rgba(2,6,23,0.85)]">
-              Revolutionize your parking experience.
-              <br className="hidden sm:block" /> Find, book, and park instantly.
-            </p>
-
-            <p className="mx-auto mt-3.5 max-w-xl text-callout leading-relaxed text-white/70">
-              See which bays are free right now, priced for your exact window before you commit.
+            {/* One supporting line, not three. Every extra line of copy here is
+                a line that pushes the booking form off the first screen. */}
+            <p className="mx-auto mt-4 max-w-xl text-callout leading-relaxed text-white/85 [text-shadow:0_2px_16px_rgba(2,6,23,0.85)]">
+              Find, book and park instantly - see which bays are free right now, priced for your exact window before you
+              commit.
             </p>
           </div>
 
           {/* The booking journey runs here, on this page, start to finish. */}
           <BookingFlow />
 
-          <ul className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
             {HIGHLIGHTS.map((item) => (
-              <li key={item.title} className="flex flex-col items-center gap-2 text-center">
-                <span className="glass grid h-10 w-10 place-items-center rounded-control text-cyan-200">
-                  <Icon name={item.icon} size={4.5} />
+              <li key={item.title} className="flex flex-col items-center gap-1.5 text-center">
+                <span className="glass grid h-9 w-9 place-items-center rounded-control text-cyan-200">
+                  <Icon name={item.icon} size={4} />
                 </span>
                 <span className="text-caption font-semibold text-white/90">{item.title}</span>
               </li>
