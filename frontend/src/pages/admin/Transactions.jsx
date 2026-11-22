@@ -69,7 +69,7 @@ const Transactions = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Platform admin" title="Transactions" subtitle="Every payment on the platform, with the commission split recorded at capture time." />
+      <PageHeader eyebrow="Platform admin" title="Transactions" />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
       {notice && <Alert kind="info" onDismiss={() => setNotice('')}>{notice}</Alert>}
@@ -82,7 +82,7 @@ const Transactions = () => {
         </div>
       )}
 
-      <Card title="Platform commission" subtitle="Clearing per-facility overrides makes every facility fall back to the platform default.">
+      <Card title="Platform commission">
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Commission percent" className="w-52">
             <Input
@@ -99,10 +99,6 @@ const Transactions = () => {
             Clear per-facility overrides
           </Button>
         </div>
-        <p className="mt-2 text-caption text-label-secondary">
-          The platform-wide default itself is set with the <code>PLATFORM_COMMISSION_PERCENT</code> environment variable.
-          Per-facility rates are set when approving a facility.
-        </p>
       </Card>
 
       <Card>
@@ -136,7 +132,7 @@ const Transactions = () => {
         {loading ? (
           <Spinner />
         ) : data.items.length === 0 ? (
-          <EmptyState title="No transactions" description="Adjust the filters to see more." />
+          <EmptyState title="No transactions" />
         ) : (
           <>
             <Table

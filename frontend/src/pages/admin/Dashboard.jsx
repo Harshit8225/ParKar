@@ -51,7 +51,6 @@ const Dashboard = () => {
       <PageHeader
         eyebrow="Platform admin"
         title="Platform overview"
-        subtitle="Activity across every facility and account on the platform."
         actions={
           <Field label="Period" className="w-48">
             <Select value={range} onChange={(event) => setRange(event.target.value)}>
@@ -121,7 +120,7 @@ const Dashboard = () => {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Arrivals by hour" subtitle="When vehicles enter facilities platform-wide">
+        <Card title="Arrivals by hour">
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={peakHours} margin={{ top: 5, right: 5, bottom: 0, left: -25 }}>

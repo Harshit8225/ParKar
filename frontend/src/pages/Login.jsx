@@ -54,9 +54,6 @@ const Login = () => {
           <Link to="/" className="inline-flex" aria-label="ParKar home">
             <Brand size="lg" className="justify-center" />
           </Link>
-          <p className="mt-4 text-callout text-label-secondary">
-            Sign in to book parking or manage your facilities.
-          </p>
         </div>
 
         <form

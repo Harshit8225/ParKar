@@ -16,6 +16,8 @@
 const env = require('../config/env');
 const { connectDatabase, disconnectDatabase } = require('../config/db');
 const { connectRedis, disconnectRedis } = require('../config/redis');
+const { rebuildLotSpots } = require('../modules/allocation/allocation.service');
+const { fixedToFlexibleRows } = require('../modules/allocation/spot.layout');
 const {
   User,
   ParkingOwner,
@@ -61,8 +63,10 @@ const OWNERS = [
         pincode: '560001',
         latitude: 12.9757,
         longitude: 77.6068,
-        capacity: { two_wheeler: 60, four_wheeler: 120 },
-        hourlyRate: { two_wheeler: 20, four_wheeler: 50 },
+        capacity: { bike: 60, car: 120, bus: 4 },
+        hourlyRate: { bike: 20, car: 50, bus: 150 },
+        // Shared area: 2 rows x 16 markers = 16 car spaces, 8 bus spaces or 32 bikes.
+        layout: { flexibleRows: [{ label: 'A', units: 16 }, { label: 'B', units: 16 }] },
         amenities: { evCharging: true, covered: true, security: true, cctv: true },
         operatingHours: { is24x7: true, openTime: '00:00', closeTime: '23:59' },
         zone: 'cbd',
@@ -77,8 +81,8 @@ const OWNERS = [
         pincode: '560038',
         latitude: 12.9719,
         longitude: 77.6412,
-        capacity: { two_wheeler: 40, four_wheeler: 55 },
-        hourlyRate: { two_wheeler: 15, four_wheeler: 40 },
+        capacity: { bike: 40, car: 55 },
+        hourlyRate: { bike: 15, car: 40 },
         amenities: { evCharging: false, covered: false, security: true, cctv: true },
         operatingHours: { is24x7: false, openTime: '06:00', closeTime: '23:00' },
         zone: 'commercial',
@@ -93,8 +97,8 @@ const OWNERS = [
         pincode: '273001',
         latitude: 26.7586,
         longitude: 83.3732,
-        capacity: { two_wheeler: 120, four_wheeler: 90 },
-        hourlyRate: { two_wheeler: 10, four_wheeler: 30 },
+        capacity: { bike: 120, car: 90 },
+        hourlyRate: { bike: 10, car: 30 },
         amenities: { evCharging: false, covered: true, security: true, cctv: true },
         operatingHours: { is24x7: true, openTime: '00:00', closeTime: '23:59' },
         zone: 'railway',
@@ -109,8 +113,8 @@ const OWNERS = [
         pincode: '273001',
         latitude: 26.757,
         longitude: 83.369,
-        capacity: { two_wheeler: 90, four_wheeler: 45 },
-        hourlyRate: { two_wheeler: 10, four_wheeler: 25 },
+        capacity: { bike: 90, car: 45 },
+        hourlyRate: { bike: 10, car: 25 },
         amenities: { evCharging: false, covered: false, security: true, cctv: true },
         operatingHours: { is24x7: false, openTime: '07:00', closeTime: '22:30' },
         zone: 'commercial',
@@ -125,8 +129,8 @@ const OWNERS = [
         pincode: '273015',
         latitude: 26.7936,
         longitude: 83.3688,
-        capacity: { two_wheeler: 150, four_wheeler: 70 },
-        hourlyRate: { two_wheeler: 8, four_wheeler: 20 },
+        capacity: { bike: 150, car: 70 },
+        hourlyRate: { bike: 8, car: 20 },
         amenities: { evCharging: false, covered: false, security: true, cctv: false },
         operatingHours: { is24x7: false, openTime: '04:00', closeTime: '22:00' },
         zone: 'standard',
@@ -141,8 +145,8 @@ const OWNERS = [
         pincode: '273001',
         latitude: 26.7625,
         longitude: 83.3675,
-        capacity: { two_wheeler: 80, four_wheeler: 110 },
-        hourlyRate: { two_wheeler: 12, four_wheeler: 35 },
+        capacity: { bike: 80, car: 110 },
+        hourlyRate: { bike: 12, car: 35 },
         amenities: { evCharging: true, covered: true, security: true, cctv: true },
         operatingHours: { is24x7: false, openTime: '09:00', closeTime: '23:00' },
         zone: 'mall',
@@ -157,8 +161,8 @@ const OWNERS = [
         pincode: '273008',
         latitude: 26.7397,
         longitude: 83.4497,
-        capacity: { two_wheeler: 40, four_wheeler: 130 },
-        hourlyRate: { two_wheeler: 15, four_wheeler: 45 },
+        capacity: { bike: 40, car: 130 },
+        hourlyRate: { bike: 15, car: 45 },
         amenities: { evCharging: true, covered: true, security: true, cctv: true },
         operatingHours: { is24x7: true, openTime: '00:00', closeTime: '23:59' },
         zone: 'airport',
@@ -173,8 +177,8 @@ const OWNERS = [
         pincode: '273013',
         latitude: 26.748,
         longitude: 83.352,
-        capacity: { two_wheeler: 130, four_wheeler: 60 },
-        hourlyRate: { two_wheeler: 8, four_wheeler: 20 },
+        capacity: { bike: 130, car: 60 },
+        hourlyRate: { bike: 8, car: 20 },
         amenities: { evCharging: false, covered: false, security: true, cctv: true },
         operatingHours: { is24x7: true, openTime: '00:00', closeTime: '23:59' },
         zone: 'hospital',
@@ -197,8 +201,9 @@ const OWNERS = [
         pincode: '560300',
         latitude: 13.1986,
         longitude: 77.7066,
-        capacity: { two_wheeler: 80, four_wheeler: 300 },
-        hourlyRate: { two_wheeler: 25, four_wheeler: 70 },
+        capacity: { bike: 80, car: 300, bus: 10 },
+        layout: { flexibleRows: [{ label: 'F', units: 24 }, { label: 'G', units: 24 }] },
+        hourlyRate: { bike: 25, car: 70, bus: 180 },
         amenities: { evCharging: true, covered: true, security: true, cctv: true },
         operatingHours: { is24x7: true, openTime: '00:00', closeTime: '23:59' },
         zone: 'airport',
@@ -213,8 +218,8 @@ const OWNERS = [
         pincode: '560095',
         latitude: 12.9345,
         longitude: 77.6114,
-        capacity: { two_wheeler: 100, four_wheeler: 180 },
-        hourlyRate: { two_wheeler: 20, four_wheeler: 60 },
+        capacity: { bike: 100, car: 180 },
+        hourlyRate: { bike: 20, car: 60 },
         amenities: { evCharging: true, covered: true, security: true, cctv: false },
         operatingHours: { is24x7: false, openTime: '09:00', closeTime: '23:30' },
         zone: 'mall',
@@ -512,8 +517,11 @@ const run = async () => {
           pincode: lotSpec.pincode,
           geo: { type: 'Point', coordinates: [lotSpec.longitude, lotSpec.latitude] },
         },
-        capacity: lotSpec.capacity,
+        // All space is shared: the spec's bay counts become flexible rows of
+        // the same size that bikes, cars and buses all use.
+        capacity: { bike: 0, car: 0, bus: 0 },
         hourlyRate: lotSpec.hourlyRate,
+        layout: { flexibleRows: fixedToFlexibleRows(lotSpec.capacity, lotSpec.layout?.flexibleRows || []) },
         amenities: lotSpec.amenities,
         operatingHours: lotSpec.operatingHours,
         rating: lotSpec.rating,
@@ -561,7 +569,7 @@ const run = async () => {
     durationHours: 3,
     overstayMinutes: 0,
     vehicleNumber: 'KA01AB1234',
-    vehicleType: 'four_wheeler',
+    vehicleType: 'car',
   });
   await seedHistory({
     driver: drivers[0],
@@ -570,7 +578,7 @@ const run = async () => {
     durationHours: 2,
     overstayMinutes: 75, // overstayed, so overstay billing is exercised
     vehicleNumber: 'KA01AB1234',
-    vehicleType: 'four_wheeler',
+    vehicleType: 'car',
   });
   await seedHistory({
     driver: drivers[1],
@@ -579,7 +587,7 @@ const run = async () => {
     durationHours: 6,
     overstayMinutes: 5, // inside the grace period, so no charge
     vehicleNumber: 'KA05MN7788',
-    vehicleType: 'two_wheeler',
+    vehicleType: 'bike',
   });
 
   logger.info('Creating one active parking session...');
@@ -587,8 +595,12 @@ const run = async () => {
     driver: drivers[1],
     lot: mgRoad,
     vehicleNumber: 'KA03XY9911',
-    vehicleType: 'four_wheeler',
+    vehicleType: 'car',
   });
+
+  // Give every live booking a concrete spot and settle the counters from them.
+  logger.info('Assigning parking spots...');
+  for (const lot of createdLots) await rebuildLotSpots(lot._id);
 
   logger.info('');
   logger.info('Seed complete. Sign in with:');

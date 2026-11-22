@@ -12,24 +12,6 @@ import { dateTime, duration, money, vehicleLabel } from '../../utils/format';
  * Bookings, reachable from the avatar menu.
  */
 
-const GATE_STEPS = [
-  {
-    icon: 'camera',
-    title: 'The camera reads your plate',
-    copy: 'Drive up to the entrance and stop at the line. The gate matches the plate against your booking and lifts the barrier. Nothing to scan or show.',
-  },
-  {
-    icon: 'clock',
-    title: 'Your stay is timed from the real entry',
-    copy: 'Billing runs from the moment you actually drive in, not from the time you booked, so arriving a few minutes late costs you nothing.',
-  },
-  {
-    icon: 'rupee',
-    title: 'Overstay settles itself',
-    copy: 'Past your booked exit there is a grace period, then extra time is charged at the facility rate. It appears here, and you can pay it from this page.',
-  },
-];
-
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [dues, setDues] = useState(null);
@@ -107,13 +89,6 @@ const Dashboard = () => {
         <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 sm:pb-24 sm:pt-12">
           <p className="eyebrow text-cyan-200/90">Driver dashboard</p>
           <h1 className="mt-2.5 text-title-1 text-white">Welcome back, {data.user.name.split(' ')[0]}</h1>
-          <p className="mt-3.5 max-w-xl text-callout leading-relaxed text-white/75">
-            {activeSession
-              ? 'Your vehicle is inside a facility right now. The card below tracks your stay by the minute.'
-              : dues?.count > 0
-                ? 'You have an unsettled overstay charge. Clear it below and you are free to book again.'
-                : 'Nothing needs your attention. Pick a window on the home page and the map will show what is free near you.'}
-          </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <LinkButton to="/" tone="light" size="lg">
@@ -147,7 +122,7 @@ const Dashboard = () => {
         {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
 
         {dues?.count > 0 && (
-          <Card title="Unpaid overstay charges" subtitle="These were calculated automatically when you exited.">
+          <Card title="Unpaid overstay charges">
             <div className="space-y-3">
               {dues.sessions.map((due) => (
                 <div
@@ -208,54 +183,17 @@ const Dashboard = () => {
         )}
 
         {allClear && (
-          <div className="flex items-start gap-4 rounded-card border border-emerald-200 bg-emerald-50 p-5">
+          <div className="flex items-center gap-4 rounded-card border border-emerald-200 bg-emerald-50 p-5">
             <span
               aria-hidden="true"
               className="grid h-10 w-10 shrink-0 place-items-center rounded-control bg-emerald-100 text-emerald-700"
             >
               <Icon name="check" size={5} />
             </span>
-            <div>
-              <h2 className="text-headline text-emerald-900">You are all settled</h2>
-              <p className="mt-1 text-footnote leading-relaxed text-emerald-800/80">
-                No vehicle inside a facility and nothing outstanding. Anything you book from here on shows up in My
-                Bookings the moment payment clears.
-              </p>
-            </div>
+            <h2 className="text-headline text-emerald-900">You are all settled</h2>
           </div>
         )}
 
-        {/* ---- What happens at the gate: the part drivers ask about most ---- */}
-        <section className="rounded-card border border-separator bg-surface p-6 sm:p-8">
-          <h2 className="text-title-3 text-label">What happens at the gate</h2>
-          <p className="mt-2 max-w-2xl text-callout leading-relaxed text-label-secondary">
-            ParKar bills your real stay, not your reservation. Here is how that works in practice, so nothing at the
-            barrier is a surprise.
-          </p>
-
-          <div className="mt-8 grid gap-8 md:grid-cols-3">
-            {GATE_STEPS.map((step, index) => (
-              <article key={step.title}>
-                <div className="flex items-center gap-2.5">
-                  <span
-                    aria-hidden="true"
-                    className="grid h-9 w-9 place-items-center rounded-control bg-brand-600 text-white"
-                  >
-                    <Icon name={step.icon} size={4.5} />
-                  </span>
-                  <span className="eyebrow text-accent-600">Step {index + 1}</span>
-                </div>
-                <h3 className="mt-3.5 text-headline text-label">{step.title}</h3>
-                <p className="mt-1.5 text-footnote leading-relaxed text-label-secondary">{step.copy}</p>
-              </article>
-            ))}
-          </div>
-
-          <p className="mt-8 border-t border-separator pt-5 text-caption leading-relaxed text-label-tertiary">
-            Enter your number plate exactly as it appears on the vehicle - the gate matches it character by character.
-            If a barrier does not open, the facility staff can verify your booking by hand.
-          </p>
-        </section>
       </div>
     </div>
   );

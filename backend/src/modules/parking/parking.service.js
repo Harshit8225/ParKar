@@ -2,9 +2,11 @@
 
 const crypto = require('crypto');
 const { ParkingLot, ParkingOwner, PricingRule, ParkingSession, Booking } = require('../../models');
-const { LOT_STATUS, ROLES, SESSION_STATUS, BOOKING_STATUS } = require('../../models/constants');
+const { LOT_STATUS, ROLES, SESSION_STATUS, BOOKING_STATUS, VEHICLE_TYPE_LIST, SPOT_ZONE } = require('../../models/constants');
 const ApiError = require('../../utils/ApiError');
 const cache = require('../../services/cache.service');
+const { withLock, lotCapacityLock } = require('../../services/lock.service');
+const layout = require('../allocation/spot.layout');
 const pricingService = require('../pricing/pricing.service');
 const { DEFAULT_PRICING_RULE } = require('../pricing/pricing.defaults');
 
@@ -13,10 +15,8 @@ const EARTH_RADIUS_KM = 6371;
 /** Public projection of a lot: everything a driver needs, nothing internal. */
 const toPublicLot = (lot, extras = {}) => {
   const doc = typeof lot.toObject === 'function' ? lot.toObject({ virtuals: true }) : lot;
-  const available = doc.available || {
-    two_wheeler: Math.max(0, doc.capacity.two_wheeler - doc.occupied.two_wheeler - doc.reserved.two_wheeler),
-    four_wheeler: Math.max(0, doc.capacity.four_wheeler - doc.occupied.four_wheeler - doc.reserved.four_wheeler),
-  };
+  const stored = doc.available || doc.availability || {};
+  const available = VEHICLE_TYPE_LIST.reduce((acc, type) => ({ ...acc, [type]: stored[type] || 0 }), {});
 
   return {
     id: doc._id.toString(),
@@ -33,6 +33,8 @@ const toPublicLot = (lot, extras = {}) => {
     },
     capacity: doc.capacity,
     available,
+    maxCapacity: layout.computeMaxCapacity(doc),
+    flexibleArea: layout.flexibleAreaSummary(doc),
     occupied: doc.occupied,
     hourlyRate: doc.hourlyRate,
     operatingHours: doc.operatingHours,
@@ -40,7 +42,7 @@ const toPublicLot = (lot, extras = {}) => {
     rating: doc.rating,
     status: doc.status,
     images: doc.images || [],
-    occupancyRate: doc.occupancyRate,
+    occupancyRate: typeof doc.occupancyRate === 'number' ? doc.occupancyRate : layout.computeOccupancyRate(doc),
     ...extras,
   };
 };
@@ -51,6 +53,11 @@ const toManagedLot = (lot) => {
   return {
     ...toPublicLot(lot),
     reserved: doc.reserved,
+    layout: {
+      flexibleRows: (doc.layout?.flexibleRows || []).map((row) => ({ label: row.label, units: row.units })),
+      batchWindowMs: doc.layout?.batchWindowMs ?? 3000,
+      contentionThreshold: doc.layout?.contentionThreshold ?? 2,
+    },
     pricing: doc.pricing,
     commissionPercent: doc.commissionPercent,
     statusReason: doc.statusReason,
@@ -131,35 +138,23 @@ const searchLots = async (params) => {
     pipeline.push({ $match: match });
   }
 
-  // Availability is derived, so compute it in the pipeline to filter and sort on it.
-  pipeline.push({
-    $addFields: {
-      availableTwoWheeler: {
-        $max: [0, { $subtract: ['$capacity.two_wheeler', { $add: ['$occupied.two_wheeler', '$reserved.two_wheeler'] }] }],
-      },
-      availableFourWheeler: {
-        $max: [
-          0,
-          { $subtract: ['$capacity.four_wheeler', { $add: ['$occupied.four_wheeler', '$reserved.four_wheeler'] }] },
-        ],
-      },
-    },
-  });
-
+  // Availability is stored on the lot (kept in step with its spot holds by the
+  // allocation module), so it can be filtered and sorted on directly.
   if (availableOnly === true) {
-    const field = vehicleType === 'two_wheeler' ? '$availableTwoWheeler' : vehicleType === 'four_wheeler' ? '$availableFourWheeler' : null;
     pipeline.push({
-      $match: field
-        ? { $expr: { $gt: [field, 0] } }
-        : { $expr: { $gt: [{ $add: ['$availableTwoWheeler', '$availableFourWheeler'] }, 0] } },
+      $match: vehicleType
+        ? { [`availability.${vehicleType}`]: { $gt: 0 } }
+        : { $or: VEHICLE_TYPE_LIST.map((type) => ({ [`availability.${type}`]: { $gt: 0 } })) },
     });
   }
 
   const sortStage = {
     distance: latitude !== undefined ? { distanceMeters: 1 } : { 'rating.average': -1 },
-    rate: vehicleType ? { [`hourlyRate.${vehicleType}`]: 1 } : { 'hourlyRate.four_wheeler': 1 },
+    rate: vehicleType ? { [`hourlyRate.${vehicleType}`]: 1 } : { 'hourlyRate.car': 1 },
     rating: { 'rating.average': -1, 'rating.count': -1 },
-    availability: { availableFourWheeler: -1, availableTwoWheeler: -1 },
+    availability: vehicleType
+      ? { [`availability.${vehicleType}`]: -1 }
+      : { 'availability.car': -1, 'availability.bike': -1, 'availability.bus': -1 },
   }[sortBy];
   pipeline.push({ $sort: sortStage });
 
@@ -175,12 +170,8 @@ const searchLots = async (params) => {
   const total = result?.total?.[0]?.count || 0;
 
   const items = rawItems.map((doc) => {
-    const available = { two_wheeler: doc.availableTwoWheeler, four_wheeler: doc.availableFourWheeler };
-    const totalCapacity = doc.capacity.two_wheeler + doc.capacity.four_wheeler;
-    const used =
-      doc.occupied.two_wheeler + doc.occupied.four_wheeler + doc.reserved.two_wheeler + doc.reserved.four_wheeler;
     return toPublicLot(
-      { ...doc, available, occupancyRate: totalCapacity ? Number((used / totalCapacity).toFixed(4)) : 0 },
+      { ...doc, occupancyRate: layout.computeOccupancyRate(doc) },
       {
         distanceKm: doc.distanceMeters !== undefined ? Number((doc.distanceMeters / 1000).toFixed(2)) : undefined,
         isOpenNow: isLotOpenNow(doc),
@@ -216,7 +207,7 @@ const getLotDetail = async (lotId) => {
   const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
 
   const indicativeRates = {};
-  for (const vehicleType of ['two_wheeler', 'four_wheeler']) {
+  for (const vehicleType of VEHICLE_TYPE_LIST) {
     if (!lot.hourlyRate[vehicleType]) continue;
     try {
       const priced = await pricingService.quote({ lot, vehicleType, entryTime: now, exitTime: oneHourLater, rule });
@@ -246,7 +237,7 @@ const getLotDetail = async (lotId) => {
 /** Live availability, cached for a few seconds since it changes constantly. */
 const getAvailability = async (lotId, vehicleType) => {
   const payload = await cache.remember(cache.KEYS.lotAvailability(lotId), cache.TTL.availability, async () => {
-    const lot = await ParkingLot.findById(lotId).select('capacity occupied reserved status name');
+    const lot = await ParkingLot.findById(lotId).select('capacity occupied reserved availability status name');
     if (!lot) throw ApiError.notFound('Parking facility not found');
     return {
       lotId: lot._id.toString(),
@@ -290,6 +281,7 @@ const createLot = async (ownerUser, input) => {
     },
     capacity: input.capacity,
     hourlyRate: input.hourlyRate,
+    layout: input.layout,
     operatingHours: input.operatingHours,
     amenities: input.amenities,
     pricing: input.pricing,
@@ -324,28 +316,57 @@ const loadManagedLot = async (lotId, actor) => {
 };
 
 /**
- * Edit a lot. Capacity may not drop below what is currently taken, otherwise
- * availability would go negative and the gate would start rejecting valid
- * bookings. An approved lot re-enters review when its capacity or rates change.
+ * Edit a lot. Space that a booking currently holds may not be removed: a fixed
+ * bay or flexible-row marker with a vehicle assigned to it must survive the
+ * edit, otherwise a driver would arrive at a spot that no longer exists.
+ *
+ * Runs under the lot lock because a capacity or layout change re-derives
+ * availability from the spot holds, which the allocator also writes.
  */
 const updateLot = async (lotId, actor, updates) => {
+  await loadManagedLot(lotId, actor);
+  return withLock(lotCapacityLock(String(lotId)), () => applyLotUpdate(lotId, actor, updates), { ttlMs: 8000 });
+};
+
+const applyLotUpdate = async (lotId, actor, updates) => {
   const lot = await loadManagedLot(lotId, actor);
+  const holds = (lot.spotHolds || []).map((h) => h.toObject());
 
   if (updates.capacity) {
-    for (const vehicleType of ['two_wheeler', 'four_wheeler']) {
-      if (updates.capacity[vehicleType] === undefined) continue;
-      const committed = lot.occupied[vehicleType] + lot.reserved[vehicleType];
-      if (updates.capacity[vehicleType] < committed) {
+    for (const vehicleType of VEHICLE_TYPE_LIST) {
+      const next = updates.capacity[vehicleType];
+      if (next === undefined) continue;
+      const highestHeld = holds
+        .filter((h) => h.zone === SPOT_ZONE.FIXED && h.vehicleType === vehicleType)
+        .reduce((max, h) => Math.max(max, h.bay), 0);
+      if (next < highestHeld) {
         throw ApiError.conflict(
-          `Cannot reduce ${vehicleType.replace('_', ' ')} capacity to ${updates.capacity[vehicleType]}: ${committed} slots are currently occupied or reserved`,
+          `Cannot reduce ${vehicleType} bays to ${next}: bay ${layout.fixedLabel(vehicleType, highestHeld)} is assigned to a current booking`,
         );
       }
-      lot.capacity[vehicleType] = updates.capacity[vehicleType];
+      lot.capacity[vehicleType] = next;
     }
   }
 
+  if (updates.layout) {
+    if (updates.layout.flexibleRows) {
+      const rows = new Map(updates.layout.flexibleRows.map((row) => [row.label, row.units]));
+      const blocked = holds.find(
+        (h) => h.zone === SPOT_ZONE.FLEXIBLE && (!rows.has(h.row) || h.start + h.size > rows.get(h.row)),
+      );
+      if (blocked) {
+        throw ApiError.conflict(
+          `Cannot change flexible row ${blocked.row}: markers ${blocked.label} are assigned to a current booking`,
+        );
+      }
+      lot.layout.flexibleRows = updates.layout.flexibleRows;
+    }
+    if (updates.layout.batchWindowMs !== undefined) lot.layout.batchWindowMs = updates.layout.batchWindowMs;
+    if (updates.layout.contentionThreshold !== undefined) lot.layout.contentionThreshold = updates.layout.contentionThreshold;
+  }
+
   if (updates.hourlyRate) {
-    for (const vehicleType of ['two_wheeler', 'four_wheeler']) {
+    for (const vehicleType of VEHICLE_TYPE_LIST) {
       if (updates.hourlyRate[vehicleType] !== undefined) lot.hourlyRate[vehicleType] = updates.hourlyRate[vehicleType];
     }
   }
@@ -394,39 +415,30 @@ const getManagedLot = async (lotId, actor) => {
     Booking.countDocuments({ parkingLot: lot._id, status: BOOKING_STATUS.CONFIRMED }),
   ]);
 
-  return { ...toManagedLot(lot), pricingRule: rule, activeSessions, upcomingBookings };
+  // Booking codes for the owner's spot map, so each held spot can be traced.
+  const holdIds = (lot.spotHolds || []).map((h) => h.booking);
+  const bookings = holdIds.length ? await Booking.find({ _id: { $in: holdIds } }).select('bookingId').lean() : [];
+  const bookingCodes = new Map(bookings.map((b) => [String(b._id), b.bookingId]));
+
+  return {
+    ...toManagedLot(lot),
+    pricingRule: rule,
+    activeSessions,
+    upcomingBookings,
+    spotMap: layout.buildSpotMap(lot, bookingCodes),
+  };
 };
 
 /**
- * Recompute occupied/reserved from the sessions and bookings that actually
- * exist. A safety valve for drift after a crash mid-transaction.
+ * Rebuild occupied/reserved and the spot holds from the sessions and bookings
+ * that actually exist. A safety valve for drift after a crash mid-transaction.
  */
 const recomputeCounters = async (lotId) => {
+  // Required lazily: the allocation module loads the models this file also uses.
+  const allocation = require('../allocation/allocation.service');
+  await allocation.rebuildLotSpots(lotId);
   const lot = await ParkingLot.findById(lotId);
   if (!lot) throw ApiError.notFound('Parking facility not found');
-
-  const [sessions, bookings] = await Promise.all([
-    ParkingSession.aggregate([
-      { $match: { parkingLot: lot._id, status: SESSION_STATUS.ACTIVE } },
-      { $group: { _id: '$vehicleType', count: { $sum: 1 } } },
-    ]),
-    Booking.aggregate([
-      { $match: { parkingLot: lot._id, status: BOOKING_STATUS.CONFIRMED } },
-      { $group: { _id: '$vehicleType', count: { $sum: 1 } } },
-    ]),
-  ]);
-
-  const asMap = (rows) => rows.reduce((acc, row) => ({ ...acc, [row._id]: row.count }), {});
-  const occupied = asMap(sessions);
-  const reserved = asMap(bookings);
-
-  lot.occupied.two_wheeler = occupied.two_wheeler || 0;
-  lot.occupied.four_wheeler = occupied.four_wheeler || 0;
-  lot.reserved.two_wheeler = reserved.two_wheeler || 0;
-  lot.reserved.four_wheeler = reserved.four_wheeler || 0;
-  await lot.save();
-
-  await cache.invalidateLot(lot._id.toString());
   return toManagedLot(lot);
 };
 

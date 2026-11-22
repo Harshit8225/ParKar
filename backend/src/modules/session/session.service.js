@@ -10,6 +10,7 @@ const { minutesBetween } = require('../../utils/time');
 const billingService = require('../billing/billing.service');
 const paymentService = require('../payment/payment.service');
 const { loadManagedLot } = require('../parking/parking.service');
+const allocation = require('../allocation/allocation.service');
 
 const toSessionDto = (session, { lot, booking } = {}) => {
   const doc = typeof session.toObject === 'function' ? session.toObject() : session;
@@ -38,6 +39,9 @@ const toSessionDto = (session, { lot, booking } = {}) => {
     booking: bookingDoc
       ? { id: bookingDoc._id.toString(), bookingId: bookingDoc.bookingId, amount: bookingDoc.pricing?.amount }
       : doc.booking,
+    spot: bookingDoc && bookingDoc.spot && bookingDoc.spot.label
+      ? { label: bookingDoc.spot.label, zone: bookingDoc.spot.zone, instructions: bookingDoc.spot.instructions }
+      : undefined,
     parkingLot: lotDoc ? { id: lotDoc._id.toString(), name: lotDoc.name } : doc.parkingLot,
     user: doc.user && doc.user.name ? { id: doc.user._id.toString(), name: doc.user.name, email: doc.user.email } : doc.user,
     createdAt: doc.createdAt,
@@ -152,18 +156,14 @@ const closeSession = async ({ session, lot, exitTime = new Date(), recognitionEv
   session.exitEvent = recognitionEventId;
   await session.save();
 
-  // Free the physical slot exactly once, even if the exit camera double-fires.
+  // Free the physical spot exactly once, even if the exit camera double-fires.
   if (wasActive) {
-    await ParkingLot.updateOne(
-      { _id: lot._id },
-      { $inc: { [`occupied.${session.vehicleType}`]: -1 } },
-    );
+    await allocation.releaseSpots(lot._id, [booking._id], { [`occupied.${session.vehicleType}`]: -1 });
+    if (booking.spot && booking.spot.label && !booking.spot.releasedAt) booking.spot.releasedAt = exitTime;
   }
 
-  if (bill.amountDue <= 0) {
-    booking.status = BOOKING_STATUS.COMPLETED;
-    await booking.save();
-  }
+  if (bill.amountDue <= 0) booking.status = BOOKING_STATUS.COMPLETED;
+  if (booking.isModified()) await booking.save();
 
   await cache.invalidateLot(lot._id.toString());
 
@@ -211,7 +211,7 @@ const listLotSessions = async (lotId, actor, { status, page, limit, vehicleNumbe
       .skip((page - 1) * limit)
       .limit(limit)
       .populate('user', 'name email phone')
-      .populate('booking', 'bookingId pricing')
+      .populate('booking', 'bookingId pricing spot')
       .lean(),
     ParkingSession.countDocuments(filter),
   ]);
@@ -229,7 +229,7 @@ const listUserSessions = async (userId, { page, limit, status }) => {
       .skip((page - 1) * limit)
       .limit(limit)
       .populate('parkingLot', 'name location')
-      .populate('booking', 'bookingId pricing')
+      .populate('booking', 'bookingId pricing spot')
       .lean(),
     ParkingSession.countDocuments(filter),
   ]);
@@ -242,7 +242,7 @@ const getSession = async (idOrCode, actor) => {
 
   const session = await ParkingSession.findOne(query)
     .populate('parkingLot', 'name location owner')
-    .populate('booking', 'bookingId pricing durationHours');
+    .populate('booking', 'bookingId pricing durationHours spot');
   if (!session) throw ApiError.notFound('Parking session not found');
 
   const isOwnUser = session.user.toString() === actor._id.toString();

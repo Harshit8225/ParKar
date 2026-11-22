@@ -3,7 +3,7 @@ import { Circle, CircleMarker, MapContainer, Marker, Polyline, TileLayer, Toolti
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { formatKm, haversineKm } from '../utils/geo';
-import { money } from '../utils/format';
+import { flexibleUnits, money, offeredVehicleTypes, vehicleLabel } from '../utils/format';
 
 /**
  * Map of the facilities a search returned, the driver's own position, and - once
@@ -165,9 +165,11 @@ const ParkingMap = ({
 
         {/* ---- The facilities ---- */}
         {lots.map((lot) => {
-          const available = lot.available[vehicleType];
-          const rate = lot.hourlyRate[vehicleType];
+          const available = lot.available?.[vehicleType] ?? 0;
+          const rate = lot.hourlyRate?.[vehicleType] ?? 0;
           const away = formatKm(haversineKm(userLocation, lot.location));
+          // The other types this facility takes, for a one-line comparison.
+          const others = offeredVehicleTypes(lot).filter((type) => type !== vehicleType);
 
           return (
             <Marker
@@ -179,7 +181,7 @@ const ParkingMap = ({
               // overlap: lift the hovered one, and keep the chosen one on top.
               riseOnHover
               zIndexOffset={lot.id === selectedId ? 1000 : 0}
-              alt={`${lot.name}, ${available} slots free`}
+              alt={`${lot.name}, up to ${available} spaces free`}
               eventHandlers={{ click: () => onSelect(lot) }}
             >
               {/* Positioned by the icon's tooltipAnchor, so it tracks the
@@ -187,8 +189,22 @@ const ParkingMap = ({
               <Tooltip direction="top" opacity={1}>
                 <span className="font-semibold">{lot.name}</span>
                 <br />
-                {available > 0 ? `${money(rate)}/hr · ${available} slots free` : 'No free slots'}
+                {rate <= 0
+                  ? `No ${vehicleLabel(vehicleType).toLowerCase()} parking`
+                  : available > 0
+                    ? `${money(rate)}/hr · up to ${available} free`
+                    : 'No free spaces'}
                 {away ? ` · ${away} away` : ''}
+                {(others.length > 0 || flexibleUnits(lot) > 0) && (
+                  <>
+                    <br />
+                    <span className="opacity-75">
+                      {others.map((type) => `${vehicleLabel(type)}: up to ${lot.available?.[type] ?? 0}`).join(' · ')}
+                      {others.length > 0 && flexibleUnits(lot) > 0 ? ' · ' : ''}
+                      {flexibleUnits(lot) > 0 ? 'Flexible area' : ''}
+                    </span>
+                  </>
+                )}
               </Tooltip>
             </Marker>
           );

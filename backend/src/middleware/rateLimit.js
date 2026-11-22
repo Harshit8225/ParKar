@@ -34,6 +34,10 @@ const makeLimiter = ({ prefix, windowMs, max, message }) =>
     message: { success: false, message },
     keyGenerator: (req) => (req.user ? `u:${req.user.id}` : `ip:${req.ip}`),
     store: buildStore(prefix),
+    // The limiters are built on first request on purpose (see `lazy` below) so
+    // the Redis store is created after Redis has connected. Silence the check
+    // that flags construction inside a handler.
+    validate: { creationStack: false },
   });
 
 // Built lazily so Redis has finished connecting before the store is created.

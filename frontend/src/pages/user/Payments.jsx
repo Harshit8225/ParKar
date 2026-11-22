@@ -51,11 +51,7 @@ const Payments = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Driver"
-        title="Payment history"
-        subtitle="Every transaction on your account, including overstay charges."
-      />
+      <PageHeader eyebrow="Driver" title="Payment history" />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
 
@@ -96,7 +92,7 @@ const Payments = () => {
         {loading ? (
           <Spinner />
         ) : data.items.length === 0 ? (
-          <EmptyState title="No transactions" description="Payments you make will be listed here." />
+          <EmptyState title="No transactions" />
         ) : (
           <>
             <Table headers={['Transaction ID', 'Date', 'Facility', 'Booking', 'Purpose', 'Amount', 'Status']}>

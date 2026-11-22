@@ -9,6 +9,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node src/seed/seed.js",
+    "migrate:vehicle-types": "node src/seed/migrate-vehicle-types.js",
+    "migrate:shared-space": "node src/seed/convert-to-shared-space.js",
     "test": "jest --runInBand"
   },
   "comment_overrides": "express 4.x pins a nested qs with GHSA-x5fp-wj9c-mxmx / GHSA-4mjr-xmp4-gh2g; force the patched release.",

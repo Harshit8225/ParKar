@@ -34,13 +34,76 @@ export const duration = (minutes) => {
   return `${hours}h ${mins}m`;
 };
 
-export const vehicleLabel = (type) => (type === 'two_wheeler' ? 'Two-wheeler' : 'Four-wheeler');
-
 export const statusLabel = (status) =>
   String(status || '')
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+
+/* ------------------------------------------------------------ vehicles ---- */
+
+/**
+ * Every vehicle type the platform knows, in display order. Each per-vehicle
+ * object on a lot (`capacity`, `available`, `hourlyRate`, ...) is keyed by
+ * these, so pages iterate this list rather than spelling the keys out.
+ *
+ * `units` is space on the ground in bike-sized markers: one car space holds two
+ * bikes, one bus space holds two cars.
+ */
+export const VEHICLE_TYPES = ['bike', 'car', 'bus'];
+
+export const VEHICLE_META = {
+  bike: { label: 'Bike', plural: 'bikes', units: 1, icon: 'bike' },
+  car: { label: 'Car', plural: 'cars', units: 2, icon: 'car' },
+  bus: { label: 'Bus', plural: 'buses', units: 4, icon: 'bus' },
+};
+
+/** Falls back to a readable form of the raw key for pre-migration bookings. */
+export const vehicleLabel = (type) => VEHICLE_META[type]?.label || statusLabel(type) || '-';
+
+/** "1 bike", "3 buses". */
+export const vehicleCount = (type, count) => {
+  const n = Number(count) || 0;
+  const meta = VEHICLE_META[type];
+  if (!meta) return `${n}`;
+  return `${n} ${n === 1 ? meta.label.toLowerCase() : meta.plural}`;
+};
+
+/**
+ * Types a lot actually accepts. A type with no hourly rate is not offered there,
+ * whether or not it has bays. Falls back to every type when a lot object has no
+ * rates on it (some summary lists omit them).
+ */
+export const offeredVehicleTypes = (lot) => {
+  if (!lot?.hourlyRate) return VEHICLE_TYPES;
+  return VEHICLE_TYPES.filter((type) => Number(lot.hourlyRate[type]) > 0);
+};
+
+/** "4 bikes / 10 cars / 1 bus" for a { bike, car, bus } object. */
+export const vehicleCounts = (counts, { types = VEHICLE_TYPES, skipZero = false, separator = ' / ' } = {}) => {
+  const parts = types
+    .filter((type) => !skipZero || Number(counts?.[type]) > 0)
+    .map((type) => vehicleCount(type, counts?.[type]));
+  return parts.length ? parts.join(separator) : '-';
+};
+
+/**
+ * How many of each type a set of flexible rows could hold if it were empty. A
+ * vehicle cannot straddle two rows, so each row is floored on its own.
+ */
+export const flexibleCapacity = (rows = []) =>
+  VEHICLE_TYPES.reduce((acc, type) => {
+    const size = VEHICLE_META[type].units;
+    acc[type] = rows.reduce((sum, row) => sum + Math.floor((Number(row.units) || 0) / size), 0);
+    return acc;
+  }, {});
+
+/** Total markers in a lot's shared flexible zone, from whichever shape it carries. */
+export const flexibleUnits = (lot) => {
+  if (lot?.flexibleArea?.totalUnits !== undefined) return Number(lot.flexibleArea.totalUnits) || 0;
+  const rows = lot?.flexibleArea?.rows || lot?.layout?.flexibleRows || [];
+  return rows.reduce((sum, row) => sum + (Number(row.units) || 0), 0);
+};
 
 /**
  * Badge classes per status, so a status colour is never chosen inline.

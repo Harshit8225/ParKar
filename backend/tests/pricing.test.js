@@ -9,7 +9,7 @@ const TZ = 'Asia/Kolkata';
 /** A lot object shaped like the Mongoose doc the service reads. */
 const makeLot = (overrides = {}) => ({
   _id: 'lot1',
-  hourlyRate: { two_wheeler: 20, four_wheeler: 50 },
+  hourlyRate: { bike: 20, car: 50, bus: 120 },
   occupancyRate: 0.2,
   pricing: {
     dynamicPricingEnabled: true,
@@ -37,7 +37,7 @@ describe('quote - base arithmetic', () => {
   it('charges rate x hours when every multiplier is neutral', async () => {
     const result = await pricing.quote({
       lot: makeLot(),
-      vehicleType: 'four_wheeler',
+      vehicleType: 'car',
       entryTime: localTime(1, 13), // Tuesday 13:00, off-peak
       exitTime: localTime(1, 16),
       rule: FLAT_RULE,
@@ -53,7 +53,7 @@ describe('quote - base arithmetic', () => {
     const entry = localTime(1, 13);
     const result = await pricing.quote({
       lot: makeLot(),
-      vehicleType: 'two_wheeler',
+      vehicleType: 'bike',
       entryTime: entry,
       exitTime: new Date(entry.getTime() + 90 * 60 * 1000), // 1h30m
       rule: FLAT_RULE,
@@ -63,21 +63,21 @@ describe('quote - base arithmetic', () => {
     expect(result.amount).toBe(40);
   });
 
-  it('prices two-wheelers and four-wheelers separately', async () => {
+  it('prices bikes and cars separately', async () => {
     const args = { entryTime: localTime(1, 13), exitTime: localTime(1, 14), rule: FLAT_RULE, lot: makeLot() };
-    const two = await pricing.quote({ ...args, vehicleType: 'two_wheeler' });
-    const four = await pricing.quote({ ...args, vehicleType: 'four_wheeler' });
+    const two = await pricing.quote({ ...args, vehicleType: 'bike' });
+    const four = await pricing.quote({ ...args, vehicleType: 'car' });
 
     expect(two.amount).toBe(20);
     expect(four.amount).toBe(50);
   });
 
   it('rejects a vehicle type the facility has no rate for', async () => {
-    const lot = makeLot({ hourlyRate: { two_wheeler: 0, four_wheeler: 50 } });
+    const lot = makeLot({ hourlyRate: { bike: 0, car: 50, bus: 0 } });
     await expect(
       pricing.quote({
         lot,
-        vehicleType: 'two_wheeler',
+        vehicleType: 'bike',
         entryTime: localTime(1, 13),
         exitTime: localTime(1, 14),
         rule: FLAT_RULE,
@@ -88,7 +88,7 @@ describe('quote - base arithmetic', () => {
 
 describe('quote - the four dynamic factors', () => {
   it('raises the price as occupancy rises', async () => {
-    const args = { vehicleType: 'four_wheeler', entryTime: localTime(1, 13), exitTime: localTime(1, 14) };
+    const args = { vehicleType: 'car', entryTime: localTime(1, 13), exitTime: localTime(1, 14) };
 
     const empty = await pricing.quote({ ...args, lot: makeLot({ occupancyRate: 0.1 }), rule: DEFAULT_PRICING_RULE });
     const nearlyFull = await pricing.quote({ ...args, lot: makeLot({ occupancyRate: 0.95 }), rule: DEFAULT_PRICING_RULE });
@@ -104,10 +104,10 @@ describe('quote - the four dynamic factors', () => {
     };
 
     const offPeak = await pricing.quote({
-      lot: makeLot(), vehicleType: 'four_wheeler', entryTime: localTime(1, 13), exitTime: localTime(1, 14), rule,
+      lot: makeLot(), vehicleType: 'car', entryTime: localTime(1, 13), exitTime: localTime(1, 14), rule,
     });
     const peak = await pricing.quote({
-      lot: makeLot(), vehicleType: 'four_wheeler', entryTime: localTime(1, 18), exitTime: localTime(1, 19), rule,
+      lot: makeLot(), vehicleType: 'car', entryTime: localTime(1, 18), exitTime: localTime(1, 19), rule,
     });
 
     expect(offPeak.multipliers.peakHour).toBe(1);
@@ -122,7 +122,7 @@ describe('quote - the four dynamic factors', () => {
     };
     // 16:00 -> 18:00 starts off-peak but runs into the window.
     const result = await pricing.quote({
-      lot: makeLot(), vehicleType: 'four_wheeler', entryTime: localTime(1, 16), exitTime: localTime(1, 18), rule,
+      lot: makeLot(), vehicleType: 'car', entryTime: localTime(1, 16), exitTime: localTime(1, 18), rule,
     });
     expect(result.multipliers.peakHour).toBe(1.5);
   });
@@ -130,10 +130,10 @@ describe('quote - the four dynamic factors', () => {
   it('honours the day-of-week multiplier', async () => {
     const rule = { ...FLAT_RULE, dayOfWeekMultipliers: [2, 1, 1, 1, 1, 1, 1] }; // Sunday doubles
     const sunday = await pricing.quote({
-      lot: makeLot(), vehicleType: 'four_wheeler', entryTime: localTime(6, 13), exitTime: localTime(6, 14), rule,
+      lot: makeLot(), vehicleType: 'car', entryTime: localTime(6, 13), exitTime: localTime(6, 14), rule,
     });
     const monday = await pricing.quote({
-      lot: makeLot(), vehicleType: 'four_wheeler', entryTime: localTime(0, 13), exitTime: localTime(0, 14), rule,
+      lot: makeLot(), vehicleType: 'car', entryTime: localTime(0, 13), exitTime: localTime(0, 14), rule,
     });
 
     expect(sunday.multipliers.dayOfWeek).toBe(2);
@@ -144,7 +144,7 @@ describe('quote - the four dynamic factors', () => {
   it('applies the location zone premium', async () => {
     const rule = { ...FLAT_RULE, locationFactor: { zoneLabel: 'airport' } };
     const result = await pricing.quote({
-      lot: makeLot(), vehicleType: 'four_wheeler', entryTime: localTime(1, 13), exitTime: localTime(1, 14), rule,
+      lot: makeLot(), vehicleType: 'car', entryTime: localTime(1, 13), exitTime: localTime(1, 14), rule,
     });
 
     expect(result.multipliers.location).toBe(1.4);
@@ -162,7 +162,7 @@ describe('quote - the four dynamic factors', () => {
     };
 
     const result = await pricing.quote({
-      lot: makeLot(), vehicleType: 'four_wheeler', entryTime: localTime(1, 13), exitTime: localTime(1, 14), rule,
+      lot: makeLot(), vehicleType: 'car', entryTime: localTime(1, 13), exitTime: localTime(1, 14), rule,
     });
 
     expect(result.multipliers.combined).toBe(2.5); // 16x raw, capped
@@ -172,7 +172,7 @@ describe('quote - the four dynamic factors', () => {
   it('ignores every factor when dynamic pricing is switched off', async () => {
     const lot = makeLot({ occupancyRate: 0.99, pricing: { dynamicPricingEnabled: false } });
     const result = await pricing.quote({
-      lot, vehicleType: 'four_wheeler', entryTime: localTime(6, 18), exitTime: localTime(6, 19), rule: DEFAULT_PRICING_RULE,
+      lot, vehicleType: 'car', entryTime: localTime(6, 18), exitTime: localTime(6, 19), rule: DEFAULT_PRICING_RULE,
     });
 
     expect(result.multipliers.combined).toBe(1);

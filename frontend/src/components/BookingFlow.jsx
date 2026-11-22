@@ -1,12 +1,20 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { errorMessage } from '../api/client';
+import { errorMessage, isConflict } from '../api/client';
 import { bookingApi, geoApi, parkingApi, pricingApi } from '../api/endpoints';
 import { useAuth } from '../context/AuthContext';
 import { useCheckout } from '../hooks/useCheckout';
 import Icon from './Icon';
+import { SpotCallout, SpotConfirming, SpotUnavailable } from './ParkingSpot';
 import { Button } from './ui';
-import { money, timeOnly, toLocalInputValue, vehicleLabel } from '../utils/format';
+import {
+  money,
+  timeOnly,
+  toLocalInputValue,
+  VEHICLE_META,
+  VEHICLE_TYPES,
+  vehicleLabel,
+} from '../utils/format';
 import { fetchDrivingRoute, formatDuration, formatKm, googleDirectionsUrl, haversineKm } from '../utils/geo';
 
 /**
@@ -23,10 +31,7 @@ import { fetchDrivingRoute, formatDuration, formatKm, googleDirectionsUrl, haver
 /** Leaflet is a third of the bundle and is only needed once a search returns. */
 const ParkingMap = lazy(() => import('./ParkingMap'));
 
-const VEHICLE_OPTIONS = [
-  { value: 'four_wheeler', label: 'Four-wheeler (car)' },
-  { value: 'two_wheeler', label: 'Two-wheeler (bike)' },
-];
+const VEHICLE_OPTIONS = VEHICLE_TYPES.map((type) => ({ value: type, label: VEHICLE_META[type].label }));
 
 /** Next quarter-hour: the earliest arrival anyone can realistically make. */
 const defaultArrival = () => {
@@ -55,6 +60,7 @@ const FacilityPanel = ({
   routing,
   routeError,
   onBack,
+  onFindOthers,
 }) => {
   const navigate = useNavigate();
   const { pay, processing, error: payError } = useCheckout();
@@ -64,6 +70,12 @@ const FacilityPanel = ({
   const [quoting, setQuoting] = useState(true);
   const [quoteError, setQuoteError] = useState('');
   const [error, setError] = useState('');
+  // While POST /bookings is in flight - near capacity it can take several seconds.
+  const [confirming, setConfirming] = useState(false);
+  // null, or the server's message when the space went to other bookings (409).
+  const [conflict, setConflict] = useState(null);
+  // The booking the server created, so its spot shows while payment is taken.
+  const [created, setCreated] = useState(null);
 
   // `couponInput` is what is being typed; `appliedCoupon` is what the quote was
   // priced with. Keeping them apart stops every keystroke re-pricing.
@@ -102,8 +114,9 @@ const FacilityPanel = ({
     };
   }, [lot.id, vehicleType, parkingWindow.entry, parkingWindow.exit, appliedCoupon]);
 
-  const available = lot.available[vehicleType];
-  const soldOut = available <= 0;
+  const offered = Number(lot.hourlyRate?.[vehicleType]) > 0;
+  const available = lot.available?.[vehicleType] ?? 0;
+  const soldOut = !offered || available <= 0;
 
   // Straight-line distance is instant and always available; the driving figure
   // replaces it once the route comes back.
@@ -120,9 +133,12 @@ const FacilityPanel = ({
   const book = async (event) => {
     event.preventDefault();
     setError('');
+    setConflict(null);
 
+    let result;
+    setConfirming(true);
     try {
-      const result = await bookingApi.create({
+      result = await bookingApi.create({
         parkingLotId: lot.id,
         vehicleNumber: vehicleNumber.trim().toUpperCase(),
         vehicleType,
@@ -130,7 +146,16 @@ const FacilityPanel = ({
         durationHours: parkingWindow.hours,
         couponCode: appliedCoupon || undefined,
       });
+    } catch (err) {
+      if (isConflict(err)) setConflict(errorMessage(err, ''));
+      else setError(errorMessage(err, 'Could not create your booking.'));
+      return;
+    } finally {
+      setConfirming(false);
+    }
 
+    setCreated(result.booking);
+    try {
       // A fully-discounted booking is already confirmed by the server - there is
       // no order to take to the gateway.
       if (result.payment?.settled) {
@@ -143,7 +168,7 @@ const FacilityPanel = ({
         { onSuccess: () => navigate(`/app/bookings/${result.booking.bookingId}?paid=1`) },
       );
     } catch (err) {
-      setError(errorMessage(err, 'Could not create your booking.'));
+      setError(errorMessage(err, 'Could not take the payment.'));
     }
   };
 
@@ -208,9 +233,6 @@ const FacilityPanel = ({
             ) : (
               <p className="text-footnote font-medium text-label-secondary">Share your location to see how far this is.</p>
             )}
-            <p className="mt-0.5 text-caption text-label-secondary">
-              {route ? 'The blue line on the map is this route.' : 'Your route appears on the map above.'}
-            </p>
           </div>
 
           <a
@@ -233,9 +255,11 @@ const FacilityPanel = ({
           <dd className="mt-1 text-footnote font-semibold text-label">{vehicleLabel(vehicleType)}</dd>
         </div>
         <div>
-          <dt className="eyebrow text-label-tertiary">Free slots</dt>
+          <dt className="eyebrow text-label-tertiary">Free right now</dt>
+          {/* "Up to": the flexible zone is shared, so the same space is counted
+              for every vehicle type that could use it. */}
           <dd className={`mt-1 text-footnote font-semibold ${soldOut ? 'text-rose-600' : 'text-emerald-600'}`}>
-            {available} of {lot.capacity[vehicleType]}
+            {offered ? `Up to ${available}` : 'Not accepted here'}
           </dd>
         </div>
         <div>
@@ -261,7 +285,6 @@ const FacilityPanel = ({
             maxLength={15}
             className={`${FIELD} font-mono uppercase tracking-wider`}
           />
-          <span className="mt-1.5 block text-caption text-label-secondary">The gate camera matches this exactly.</span>
         </label>
 
         <div className="rounded-control bg-slate-50 p-4 ring-1 ring-inset ring-separator">
@@ -344,25 +367,35 @@ const FacilityPanel = ({
         <div className="sm:col-span-2">
           {error && <p className="mb-3 text-footnote font-medium text-rose-600">{error}</p>}
           {payError && <p className="mb-3 text-footnote font-medium text-rose-600">{payError}</p>}
-          {soldOut && (
+          {confirming && <SpotConfirming className="mb-3" />}
+          {created?.spot && <SpotCallout spot={created.spot} title="Spot held for you" className="mb-3" />}
+          {soldOut && conflict === null && (
             <p className="mb-3 rounded-control bg-amber-50 px-3.5 py-2.5 text-footnote text-amber-800">
-              Every {vehicleLabel(vehicleType).toLowerCase()} slot here is taken right now. Pick another pin.
+              {offered
+                ? `Every ${vehicleLabel(vehicleType).toLowerCase()} space here is taken right now. Pick another pin.`
+                : `This facility does not take ${VEHICLE_META[vehicleType]?.plural || 'this vehicle type'}. Pick another pin.`}
             </p>
           )}
 
-          <Button
-            type="submit"
-            size="lg"
-            loading={processing}
-            disabled={soldOut || quoting || !quote || !vehicleNumber.trim()}
-            className="w-full sm:w-auto"
-          >
-            {!quote
-              ? 'Book this slot'
-              : quote.amount <= 0
-                ? 'Confirm booking (free)'
-                : `Pay ${money(quote.amount)} and book`}
-          </Button>
+          {conflict !== null ? (
+            <SpotUnavailable message={conflict} onFindOthers={onFindOthers || onBack} />
+          ) : (
+            <Button
+              type="submit"
+              size="lg"
+              loading={processing || confirming}
+              disabled={soldOut || quoting || !quote || !vehicleNumber.trim()}
+              className="w-full sm:w-auto"
+            >
+              {confirming
+                ? 'Confirming your spot'
+                : !quote
+                  ? 'Book this slot'
+                  : quote.amount <= 0
+                    ? 'Confirm booking (free)'
+                    : `Pay ${money(quote.amount)} and book`}
+            </Button>
+          )}
           <p className="mt-3 text-caption text-label-tertiary">Bookings cannot be cancelled or refunded once paid.</p>
         </div>
       </form>
@@ -382,7 +415,7 @@ const BookingFlow = () => {
       location: '',
       arrival: toLocalInputValue(arrival),
       departure: toLocalInputValue(new Date(arrival.getTime() + 2 * 60 * 60 * 1000)),
-      vehicleType: 'four_wheeler',
+      vehicleType: 'car',
     };
   });
 
@@ -533,8 +566,9 @@ const BookingFlow = () => {
     return { entry, exit, hours };
   };
 
+  /** Also called with no event, to refresh the results after a lost booking. */
   const search = async (event) => {
-    event.preventDefault();
+    event?.preventDefault();
 
     // Nothing about the facilities is revealed to a visitor.
     if (!canSearch) {
@@ -667,19 +701,12 @@ const BookingFlow = () => {
           </Button>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          {usingGps && (
-            <span className="text-caption font-medium text-emerald-700">
-              Searching around your location - edit the field to search somewhere else.
-            </span>
-          )}
-          {!canSearch && (
-            <span className="inline-flex items-center gap-1.5 text-caption font-medium text-label-secondary">
-              <Icon name="lock" size={3.5} />
-              Sign in to see parking near you
-            </span>
-          )}
-        </div>
+        {!canSearch && (
+          <p className="mt-3 inline-flex items-center gap-1.5 text-caption font-medium text-label-secondary">
+            <Icon name="lock" size={3.5} />
+            Sign in to see parking near you
+          </p>
+        )}
 
         {error && <p className="mt-3 text-footnote font-medium text-rose-600">{error}</p>}
       </form>
@@ -690,20 +717,12 @@ const BookingFlow = () => {
           {results.length === 0 ? (
             <div className="py-6 text-center">
               <p className="text-footnote font-semibold text-label">No facilities with free slots matched</p>
-              <p className="mt-1 text-footnote text-label-secondary">
-                Try a different area, or shift your window - facilities fill up fast at peak hours.
-              </p>
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-footnote font-semibold text-label">
-                  {results.length} {results.length === 1 ? 'facility' : 'facilities'} with free slots
-                </p>
-                <p className="text-caption text-label-secondary">
-                  {selected ? 'Pick another pin to compare.' : 'Tap a pin to see its details and price.'}
-                </p>
-              </div>
+              <p className="text-footnote font-semibold text-label">
+                {results.length} {results.length === 1 ? 'facility' : 'facilities'} with free slots
+              </p>
 
               {/* The map stays put once a pin is chosen, so the drawn route and
                   the details are readable together. */}
@@ -725,15 +744,12 @@ const BookingFlow = () => {
                 />
               </Suspense>
 
-              {!userLocation && (
-                <p className="mt-3 text-caption text-label-secondary">
-                  Share your location to see how far each facility is and to get directions.
-                </p>
-              )}
-
               {selected && searchedWindow && (
                 <div className="mt-4">
                   <FacilityPanel
+                    // Keyed so a booking attempt at one facility never carries
+                    // its state over to the next pin.
+                    key={selected.id}
                     lot={selected}
                     window={searchedWindow}
                     vehicleType={form.vehicleType}
@@ -742,6 +758,9 @@ const BookingFlow = () => {
                     routing={routing}
                     routeError={routeError}
                     onBack={() => setSelected(null)}
+                    // Availability has just changed, so re-run the search rather
+                    // than going back to stale pins.
+                    onFindOthers={() => search()}
                   />
                 </div>
               )}

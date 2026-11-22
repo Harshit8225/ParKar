@@ -1,7 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const { BOOKING_STATUS, VEHICLE_TYPE_LIST } = require('./constants');
+const { BOOKING_STATUS, VEHICLE_TYPE_LIST, SPOT_ZONE } = require('./constants');
 const { normalizePlate } = require('../utils/plate');
 
 const bookingSchema = new mongoose.Schema(
@@ -42,6 +42,23 @@ const bookingSchema = new mongoose.Schema(
         discountAmount: { type: Number, min: 0 },
         originalAmount: { type: Number, min: 0 },
       },
+    },
+
+    /**
+     * Where the driver parks, assigned with the booking. A copy of the lot's
+     * spotHold; `releasedAt` marks when the space was given back.
+     */
+    spot: {
+      zone: { type: String, enum: Object.values(SPOT_ZONE) },
+      label: { type: String },
+      row: { type: String },
+      bay: { type: Number },
+      start: { type: Number },
+      size: { type: Number },
+      vehicleType: { type: String, enum: VEHICLE_TYPE_LIST },
+      instructions: { type: String },
+      assignedAt: { type: Date },
+      releasedAt: { type: Date },
     },
 
     status: { type: String, enum: Object.values(BOOKING_STATUS), default: BOOKING_STATUS.PENDING_PAYMENT, index: true },

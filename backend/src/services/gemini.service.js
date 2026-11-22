@@ -31,7 +31,7 @@ const PROMPT = [
   '- confidence must be your genuine certainty from 0 to 1.',
   '',
   'Respond with JSON only, matching this shape exactly:',
-  '{"plate": "KA01AB1234" | null, "confidence": 0.0, "vehicleType": "two_wheeler" | "four_wheeler" | "unknown", "notes": "short reason if unreadable"}',
+  '{"plate": "KA01AB1234" | null, "confidence": 0.0, "vehicleType": "bike" | "car" | "bus" | "unknown", "notes": "short reason if unreadable"}',
 ].join('\n');
 
 const RESPONSE_SCHEMA = {
@@ -39,7 +39,7 @@ const RESPONSE_SCHEMA = {
   properties: {
     plate: { type: 'string', nullable: true },
     confidence: { type: 'number' },
-    vehicleType: { type: 'string', enum: ['two_wheeler', 'four_wheeler', 'unknown'] },
+    vehicleType: { type: 'string', enum: ['bike', 'car', 'bus', 'unknown'] },
     notes: { type: 'string', nullable: true },
   },
   required: ['plate', 'confidence'],

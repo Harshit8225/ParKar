@@ -16,7 +16,7 @@ import {
   Table,
   Td,
 } from '../../components/ui';
-import { money, percent } from '../../utils/format';
+import { flexibleUnits, money, offeredVehicleTypes, percent, vehicleCounts, vehicleLabel } from '../../utils/format';
 
 const STATUSES = [
   { value: '', label: 'All facilities' },
@@ -55,7 +55,6 @@ const MyLots = () => {
       <PageHeader
         eyebrow="Parking owner"
         title="My parking facilities"
-        subtitle="Capacity, rates and approval status for each facility you run."
         actions={
           <>
             <Field label="Filter" className="w-48">
@@ -82,7 +81,6 @@ const MyLots = () => {
         <Card>
           <EmptyState
             title="No facilities to show"
-            description={status ? 'No facilities have this status.' : 'Register a facility to start accepting bookings.'}
             action={
               <LinkButton to="/owner/lots/new" icon="plus">Register facility</LinkButton>
             }
@@ -90,7 +88,7 @@ const MyLots = () => {
         </Card>
       ) : (
         <Card padded={false}>
-          <Table headers={['Facility', 'City', 'Status', 'Capacity (2W / 4W)', 'Rates (2W / 4W)', 'Occupancy', 'Hours', '']}>
+          <Table headers={['Facility', 'City', 'Status', 'Dedicated bays', 'Rates / hr', 'Occupancy', 'Hours', '']}>
             {data.items.map((lot) => (
               <tr key={lot.id} className="hover:bg-slate-50">
                 <Td>
@@ -107,10 +105,17 @@ const MyLots = () => {
                   )}
                 </Td>
                 <Td className="tabular-nums">
-                  {lot.capacity.two_wheeler} / {lot.capacity.four_wheeler}
+                  <span className="block text-caption">{vehicleCounts(lot.capacity, { skipZero: true })}</span>
+                  {flexibleUnits(lot) > 0 && (
+                    <span className="block text-caption text-label-secondary">+ {flexibleUnits(lot)} flexible units</span>
+                  )}
                 </Td>
                 <Td className="tabular-nums">
-                  {money(lot.hourlyRate.two_wheeler)} / {money(lot.hourlyRate.four_wheeler)}
+                  {offeredVehicleTypes(lot).map((type) => (
+                    <span key={type} className="block text-caption">
+                      {vehicleLabel(type)} {money(lot.hourlyRate[type])}
+                    </span>
+                  ))}
                 </Td>
                 <Td className="tabular-nums">{percent((lot.occupancyRate || 0) * 100, 0)}</Td>
                 <Td>{lot.operatingHours.is24x7 ? '24/7' : `${lot.operatingHours.openTime}-${lot.operatingHours.closeTime}`}</Td>

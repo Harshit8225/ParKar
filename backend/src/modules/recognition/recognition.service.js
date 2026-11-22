@@ -329,18 +329,22 @@ const processEntry = async ({ lotId, imageBuffer, mimeType, manualPlate, cameraI
     await session.save();
   }
 
+  const spot = bookingService.toSpotDto(booking.spot);
+
   return {
     allowed: true,
     result: created ? RECOGNITION_RESULT.VERIFIED : RECOGNITION_RESULT.DUPLICATE,
     message: created
-      ? `Welcome. Entry recorded for ${booking.vehicleNumber}.`
+      ? `Welcome. Entry recorded for ${booking.vehicleNumber}.${spot ? ` Proceed to ${spot.label}.` : ''}`
       : `This vehicle is already inside (session ${session.sessionId}).`,
     recognition: { plate, confidence: recognition.confidence, matchKind: match.kind },
+    spot,
     booking: {
       bookingId: booking.bookingId,
       vehicleNumber: booking.vehicleNumber,
       expectedExitTime: booking.expectedExitTime,
       durationHours: booking.durationHours,
+      spot,
     },
     session: {
       sessionId: session.sessionId,

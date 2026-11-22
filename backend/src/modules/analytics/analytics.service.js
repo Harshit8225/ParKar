@@ -7,7 +7,9 @@ const {
   PAYMENT_STATUS,
   LOT_STATUS,
   ROLES,
+  VEHICLE_TYPE_LIST,
 } = require('../../models/constants');
+const spotLayout = require('../allocation/spot.layout');
 const cache = require('../../services/cache.service');
 const { dayjs } = require('../../utils/time');
 
@@ -29,33 +31,41 @@ const resolveRange = (range = '7d') => {
 
 /** Occupancy and slot counts, read straight off the lot documents. */
 const occupancySnapshot = (lots) => {
-  const totals = {
-    capacity: { two_wheeler: 0, four_wheeler: 0 },
-    occupied: { two_wheeler: 0, four_wheeler: 0 },
-    reserved: { two_wheeler: 0, four_wheeler: 0 },
-    available: { two_wheeler: 0, four_wheeler: 0 },
-  };
+  const zero = () => VEHICLE_TYPE_LIST.reduce((acc, type) => ({ ...acc, [type]: 0 }), {});
+  const totals = { capacity: zero(), maxCapacity: zero(), occupied: zero(), reserved: zero(), available: zero() };
+  let totalSpaces = 0;     // fixed bays + flexible area in car-equivalent spaces
+  let totalUnits = 0;      // bike units, the common measure across types
+  let usedUnits = 0;
 
   for (const lot of lots) {
-    for (const type of ['two_wheeler', 'four_wheeler']) {
-      totals.capacity[type] += lot.capacity[type];
-      totals.occupied[type] += lot.occupied[type];
-      totals.reserved[type] += lot.reserved[type];
-      totals.available[type] += Math.max(0, lot.capacity[type] - lot.occupied[type] - lot.reserved[type]);
+    const max = spotLayout.computeMaxCapacity(lot);
+    const availability = lot.availability || {};
+    for (const type of VEHICLE_TYPE_LIST) {
+      totals.capacity[type] += lot.capacity?.[type] || 0;
+      totals.maxCapacity[type] += max[type];
+      totals.occupied[type] += lot.occupied?.[type] || 0;
+      totals.reserved[type] += lot.reserved?.[type] || 0;
+      totals.available[type] += availability[type] || 0;
+      totalSpaces += lot.capacity?.[type] || 0;
     }
+    totalSpaces += spotLayout.flexibleAreaSummary(lot).carEquivalent;
+    const units = spotLayout.totalUnits(lot);
+    totalUnits += units;
+    usedUnits += spotLayout.computeOccupancyRate(lot) * units;
   }
 
-  const totalCapacity = totals.capacity.two_wheeler + totals.capacity.four_wheeler;
-  const totalOccupied = totals.occupied.two_wheeler + totals.occupied.four_wheeler;
-  const totalReserved = totals.reserved.two_wheeler + totals.reserved.four_wheeler;
+  const sum = (perType) => VEHICLE_TYPE_LIST.reduce((acc, type) => acc + perType[type], 0);
+  const totalOccupied = sum(totals.occupied);
+  const totalReserved = sum(totals.reserved);
 
   return {
     ...totals,
-    totalCapacity,
+    totalCapacity: totalSpaces,
     totalOccupied,
     totalReserved,
-    totalAvailable: Math.max(0, totalCapacity - totalOccupied - totalReserved),
-    occupancyRate: totalCapacity ? round2(((totalOccupied + totalReserved) / totalCapacity) * 100) : 0,
+    totalAvailable: Math.max(0, totalSpaces - totalOccupied - totalReserved),
+    // Measured in space units, so a parked bus counts for more than a bike.
+    occupancyRate: totalUnits ? round2((usedUnits / totalUnits) * 100) : 0,
     vehiclesParked: totalOccupied,
   };
 };
@@ -336,7 +346,7 @@ const lotAnalytics = async (lot, { range = '7d' } = {}) => {
       ...occupancySnapshot([lot]),
       occupancyRatePercent: round2(lot.occupancyRate * 100),
     },
-    vehiclesParkedNow: lot.occupied.two_wheeler + lot.occupied.four_wheeler,
+    vehiclesParkedNow: VEHICLE_TYPE_LIST.reduce((acc, type) => acc + (lot.occupied?.[type] || 0), 0),
     availableSlots: lot.available,
     totalVehiclesInWindow: totalVehicles,
     activeSessions,

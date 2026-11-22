@@ -6,8 +6,8 @@ import { Alert, Button, Field, Input } from '../components/ui';
 import { homeRouteFor, useAuth } from '../context/AuthContext';
 
 const ROLE_OPTIONS = [
-  { value: 'user', title: 'Driver', description: 'Search, book and pay for parking.' },
-  { value: 'owner', title: 'Parking owner', description: 'List and manage parking facilities.' },
+  { value: 'user', title: 'Driver' },
+  { value: 'owner', title: 'Parking owner' },
 ];
 
 const Register = () => {
@@ -71,7 +71,6 @@ const Register = () => {
             <Brand size="md" className="justify-center" />
           </Link>
           <h1 className="mt-4 text-title-2 text-label">Create your account</h1>
-          <p className="mt-2 text-callout text-label-secondary">Drivers book parking; owners list facilities.</p>
         </div>
 
         <form
@@ -103,7 +102,6 @@ const Register = () => {
                     className="sr-only"
                   />
                   <span className="block text-footnote font-medium text-label">{option.title}</span>
-                  <span className="mt-0.5 block text-caption text-label-secondary">{option.description}</span>
                 </label>
               ))}
             </div>
@@ -143,7 +141,7 @@ const Register = () => {
             <Field
               label="Password"
               required
-              hint="At least 8 characters, with upper case, lower case and a number"
+              hint="8+ characters, upper and lower case, a number"
             >
               <Input
                 type="password"

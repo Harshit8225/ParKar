@@ -19,9 +19,14 @@ const detail = asyncHandler(async (req, res) => {
   return ok(res, booking);
 });
 
+const spotMap = asyncHandler(async (req, res) => {
+  const map = await service.getBookingSpotMap(req.params.id, req.user);
+  return ok(res, map);
+});
+
 const lotBookings = asyncHandler(async (req, res) => {
   const { items, total, page, limit } = await service.listLotBookings(req.params.id, req.user, req.query);
   return paginated(res, items, { page, limit, total });
 });
 
-module.exports = { create, listMine, detail, lotBookings };
+module.exports = { create, listMine, detail, spotMap, lotBookings };

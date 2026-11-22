@@ -1,10 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { errorMessage } from '../../api/client';
+import { errorMessage, isConflict } from '../../api/client';
 import { bookingApi, parkingApi, paymentApi, pricingApi } from '../../api/endpoints';
 import { Alert, Badge, Button, Card, Field, Input, KeyValue, Select, Spinner } from '../../components/ui';
+import { SpotCallout, SpotConfirming, SpotUnavailable } from '../../components/ParkingSpot';
 import { useCheckout } from '../../hooks/useCheckout';
-import { money, timeOnly, toLocalInputValue, vehicleLabel } from '../../utils/format';
+import {
+  flexibleCapacity,
+  flexibleUnits,
+  money,
+  offeredVehicleTypes,
+  timeOnly,
+  toLocalInputValue,
+  VEHICLE_META,
+  vehicleCounts,
+  vehicleLabel,
+} from '../../utils/format';
 import Icon from '../../components/Icon';
 
 const DURATIONS = [1, 2, 3, 4, 6, 8, 12, 24];
@@ -49,7 +60,8 @@ const LotDetail = () => {
   const [error, setError] = useState('');
 
   const [form, setForm] = useState({
-    vehicleType: searchParams.get('vehicleType') || 'four_wheeler',
+    // Checked against what the facility offers once it loads.
+    vehicleType: searchParams.get('vehicleType') || 'car',
     vehicleNumber: '',
     entryTime: entryFromParams(searchParams.get('entry')),
     durationHours: durationFromParams(searchParams.get('duration')),
@@ -59,6 +71,10 @@ const LotDetail = () => {
   const [quoting, setQuoting] = useState(false);
   const [quoteError, setQuoteError] = useState('');
   const [booking, setBooking] = useState(null);
+  // POST /bookings in flight; near capacity it can take several seconds.
+  const [confirming, setConfirming] = useState(false);
+  // null, or the server's message when the space went to other bookings (409).
+  const [conflict, setConflict] = useState(null);
 
   const exitTime = useMemo(() => {
     const entry = new Date(form.entryTime);
@@ -69,7 +85,15 @@ const LotDetail = () => {
   useEffect(() => {
     parkingApi
       .detail(id)
-      .then(setLot)
+      .then((data) => {
+        setLot(data);
+        // A type the facility does not price (e.g. from an old link) is not
+        // bookable here, so fall back to the first one it does.
+        const offered = offeredVehicleTypes(data);
+        setForm((prev) =>
+          offered.length && !offered.includes(prev.vehicleType) ? { ...prev, vehicleType: offered[0] } : prev,
+        );
+      })
       .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoading(false));
   }, [id]);
@@ -102,21 +126,41 @@ const LotDetail = () => {
     return () => clearTimeout(timer);
   }, [lot, form.vehicleType, form.entryTime, form.durationHours, exitTime]);
 
-  const update = (field) => (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
+  const update = (field) => (event) => {
+    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+    // A different window or vehicle is a fresh attempt after a lost booking.
+    setConflict(null);
+  };
 
   const handleBooking = async (event) => {
     event.preventDefault();
     setError('');
+    setConflict(null);
 
+    let result;
+    setConfirming(true);
     try {
-      const result = await bookingApi.create({
+      result = await bookingApi.create({
         parkingLotId: lot.id,
         vehicleNumber: form.vehicleNumber.trim().toUpperCase(),
         vehicleType: form.vehicleType,
         expectedEntryTime: new Date(form.entryTime).toISOString(),
         durationHours: Number(form.durationHours),
       });
-      setBooking(result.booking);
+    } catch (err) {
+      if (isConflict(err)) setConflict(errorMessage(err, ''));
+      else setError(errorMessage(err, 'Could not create your booking.'));
+      return;
+    } finally {
+      setConfirming(false);
+    }
+
+    setBooking(result.booking);
+    try {
+      if (result.payment?.settled) {
+        navigate(`/app/bookings/${result.booking.bookingId}?paid=1`);
+        return;
+      }
 
       await pay(
         { ...result.payment, description: `Parking at ${lot.name}` },
@@ -125,7 +169,7 @@ const LotDetail = () => {
         },
       );
     } catch (err) {
-      setError(errorMessage(err, 'Could not create your booking.'));
+      setError(errorMessage(err, 'Could not take the payment.'));
     }
   };
 
@@ -145,9 +189,13 @@ const LotDetail = () => {
   if (loading) return <Spinner label="Loading facility..." />;
   if (!lot) return <Alert kind="error">{error || 'Facility not found.'}</Alert>;
 
-  const availableSlots = lot.available[form.vehicleType];
-  const soldOut = availableSlots <= 0;
+  const offeredTypes = offeredVehicleTypes(lot);
+  const offered = offeredTypes.includes(form.vehicleType);
+  const availableSlots = lot.available?.[form.vehicleType] ?? 0;
+  const soldOut = !offered || availableSlots <= 0;
   const indicative = lot.indicativeRates?.[form.vehicleType];
+  const flexRows = lot.flexibleArea?.rows || [];
+  const flexUnits = flexibleUnits(lot);
 
   return (
     <div className="space-y-6">
@@ -194,30 +242,47 @@ const LotDetail = () => {
               {lot.amenities.cctv && <Badge tone="bg-slate-100 text-label-secondary ring-separator">CCTV</Badge>}
             </div>
 
-            <div className="mt-5 grid gap-4 border-t border-separator pt-4 sm:grid-cols-2">
-              {['two_wheeler', 'four_wheeler'].map((type) =>
-                lot.capacity[type] > 0 ? (
-                  <div key={type} className="rounded-control bg-slate-50 p-4">
-                    <p className="text-footnote font-medium text-label">{vehicleLabel(type)}</p>
-                    <p className="mt-1 text-title-2 tabular-nums text-label">
-                      {money(lot.indicativeRates?.[type]?.currentRatePerHour ?? lot.hourlyRate[type])}
-                      <span className="text-footnote font-normal text-label-secondary">/hr</span>
+            <div className="mt-5 grid gap-4 border-t border-separator pt-4 sm:grid-cols-3">
+              {offeredTypes.map((type) => (
+                <div key={type} className="rounded-control bg-slate-50 p-4">
+                  <p className="flex items-center gap-1.5 text-footnote font-medium text-label">
+                    <Icon name={VEHICLE_META[type].icon} size={4} className="text-label-secondary" />
+                    {vehicleLabel(type)}
+                  </p>
+                  <p className="mt-1 text-title-2 tabular-nums text-label">
+                    {money(lot.indicativeRates?.[type]?.currentRatePerHour ?? lot.hourlyRate[type])}
+                    <span className="text-footnote font-normal text-label-secondary">/hr</span>
+                  </p>
+                  {lot.indicativeRates?.[type]?.multiplier > 1 && (
+                    <p className="text-caption text-amber-700">
+                      Base {money(lot.hourlyRate[type])} &times; {lot.indicativeRates[type].multiplier} (demand)
                     </p>
-                    {lot.indicativeRates?.[type]?.multiplier > 1 && (
-                      <p className="text-caption text-amber-700">
-                        Base {money(lot.hourlyRate[type])} &times; {lot.indicativeRates[type].multiplier} (demand)
-                      </p>
-                    )}
-                    <p className="mt-2 text-footnote text-label-secondary">
-                      <span className={lot.available[type] > 0 ? 'font-semibold text-emerald-600' : 'font-semibold text-rose-600'}>
-                        {lot.available[type]}
-                      </span>{' '}
-                      of {lot.capacity[type]} slots free
-                    </p>
-                  </div>
-                ) : null,
-              )}
+                  )}
+                  <p className="mt-2 text-footnote text-label-secondary">
+                    Up to{' '}
+                    <span className={lot.available?.[type] > 0 ? 'font-semibold text-emerald-600' : 'font-semibold text-rose-600'}>
+                      {lot.available?.[type] ?? 0}
+                    </span>{' '}
+                    free
+                  </p>
+                  <p className="text-caption text-label-tertiary">
+                    {lot.capacity?.[type] > 0 ? `${lot.capacity[type]} dedicated bays` : 'Flexible area only'}
+                  </p>
+                </div>
+              ))}
             </div>
+
+            {flexUnits > 0 && (
+              <div className="mt-4 rounded-control border border-dashed border-separator-strong px-4 py-3">
+                <p className="text-footnote font-medium text-label">Shared flexible area</p>
+                {flexRows.length > 0 && (
+                  <p className="mt-0.5 text-caption text-label-secondary">
+                    {flexRows.length} row{flexRows.length === 1 ? '' : 's'} &middot; up to{' '}
+                    {vehicleCounts(flexibleCapacity(flexRows), { types: offeredTypes, separator: ', or ' })}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="mt-4 border-t border-separator pt-4">
               <KeyValue
@@ -237,30 +302,11 @@ const LotDetail = () => {
               />
             </div>
           </Card>
-
-          <Card title="How entry and exit work">
-            <ol className="space-y-3 text-footnote text-label">
-              {[
-                'Book your slot and pay for the time you need.',
-                'Drive up to the entrance. The camera reads your number plate.',
-                'The plate is matched against your booking and the barrier opens.',
-                'At exit, the camera reads your plate again and the system calculates your actual parking time.',
-                'If you stayed past your booked exit time, an overstay charge is generated automatically.',
-              ].map((step, index) => (
-                <li key={step} className="flex gap-3">
-                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-capsule bg-brand-100 text-caption font-semibold text-brand-700">
-                    {index + 1}
-                  </span>
-                  {step}
-                </li>
-              ))}
-            </ol>
-          </Card>
         </div>
 
         {/* ---- Booking form ---- */}
         <div className="lg:col-span-2">
-          <Card title="Reserve a slot" subtitle="Bookings are for today only." className="lg:sticky lg:top-20">
+          <Card title="Reserve a slot" className="lg:sticky lg:top-20">
             <form onSubmit={handleBooking} className="space-y-4">
               {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
               {payError && (
@@ -278,16 +324,15 @@ const LotDetail = () => {
 
               <Field label="Vehicle type" required>
                 <Select value={form.vehicleType} onChange={update('vehicleType')}>
-                  {lot.capacity.four_wheeler > 0 && <option value="four_wheeler">Four-wheeler (car)</option>}
-                  {lot.capacity.two_wheeler > 0 && <option value="two_wheeler">Two-wheeler (bike)</option>}
+                  {offeredTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {vehicleLabel(type)}
+                    </option>
+                  ))}
                 </Select>
               </Field>
 
-              <Field
-                label="Vehicle number"
-                required
-                hint="This is what the camera will match at the gate, so enter it exactly."
-              >
+              <Field label="Vehicle number" required>
                 <Input
                   value={form.vehicleNumber}
                   onChange={(event) => setForm((prev) => ({ ...prev, vehicleNumber: event.target.value.toUpperCase() }))}
@@ -378,24 +423,33 @@ const LotDetail = () => {
                 )}
               </div>
 
-              {soldOut && (
+              {soldOut && conflict === null && (
                 <Alert kind="warning">
-                  All {vehicleLabel(form.vehicleType).toLowerCase()} slots are taken right now. Try another facility or check back shortly.
+                  {offered
+                    ? `All ${vehicleLabel(form.vehicleType).toLowerCase()} spaces are taken right now. Try another facility or check back shortly.`
+                    : 'This facility does not take that vehicle type.'}
                 </Alert>
               )}
 
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full"
-                loading={processing}
-                disabled={soldOut || !quote || quoting || !form.vehicleNumber.trim()}
-              >
-                {quote ? `Pay ${money(quote.amount)} and book` : 'Book slot'}
-              </Button>
+              {confirming && <SpotConfirming />}
+              {booking?.spot && <SpotCallout spot={booking.spot} title="Spot held for you" />}
+
+              {conflict !== null ? (
+                <SpotUnavailable message={conflict} onFindOthers={() => navigate('/')} actionLabel="Search nearby facilities" />
+              ) : (
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  loading={processing || confirming}
+                  disabled={soldOut || !quote || quoting || !form.vehicleNumber.trim()}
+                >
+                  {confirming ? 'Confirming your spot' : quote ? `Pay ${money(quote.amount)} and book` : 'Book slot'}
+                </Button>
+              )}
 
               <p className="text-center text-caption text-label-secondary">
-                Bookings cannot be cancelled or refunded. {availableSlots} slot(s) available now.
+                Bookings cannot be cancelled or refunded. Up to {availableSlots} space(s) available now.
                 {indicative?.activePeakWindows?.length ? ` Peak pricing active: ${indicative.activePeakWindows.join(', ')}.` : ''}
               </p>
             </form>

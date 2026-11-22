@@ -17,14 +17,6 @@ import {
 } from '../../components/ui';
 import { dateTime, statusLabel } from '../../utils/format';
 
-const RESULT_HELP = {
-  plate_mismatch: 'The plate read at the gate did not match the vehicle number on the booking.',
-  no_active_session: 'A vehicle tried to exit with no open parking session.',
-  no_booking: 'A vehicle arrived with no confirmed booking at that facility.',
-  outside_entry_window: 'A vehicle arrived well outside its booked entry window.',
-  unreadable_plate: 'The number plate could not be read with sufficient confidence.',
-};
-
 const Fraud = () => {
   const [filters, setFilters] = useState({ from: '', to: '' });
   const [data, setData] = useState({ items: [], pagination: null, byResult: {} });
@@ -54,7 +46,7 @@ const Fraud = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Platform admin" title="Fraud and security report" subtitle="Gate events the system flagged for human review. Every camera capture is recorded, whether or not the barrier opened." />
+      <PageHeader eyebrow="Platform admin" title="Fraud and security report" />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
 
@@ -80,11 +72,7 @@ const Fraud = () => {
         {loading ? (
           <Spinner />
         ) : data.items.length === 0 ? (
-          <EmptyState
-            title="Nothing flagged"
-            description="No vehicle mismatches or suspicious gate events were recorded in this period."
-            icon="&#9989;"
-          />
+          <EmptyState title="Nothing flagged" icon="&#9989;" />
         ) : (
           <>
             <Table headers={['Time', 'Facility', 'Gate', 'Plate read', 'Booked plate', 'Similarity', 'Result', 'Detail']}>
@@ -118,19 +106,6 @@ const Fraud = () => {
             <Pagination pagination={data.pagination} onChange={load} />
           </>
         )}
-      </Card>
-
-      <Card title="What these results mean">
-        <dl className="space-y-2 text-footnote">
-          {Object.entries(RESULT_HELP).map(([key, description]) => (
-            <div key={key} className="flex flex-wrap items-baseline gap-2">
-              <dt>
-                <Badge tone="bg-slate-100 text-label-secondary ring-separator">{statusLabel(key)}</Badge>
-              </dt>
-              <dd className="flex-1 text-label-secondary">{description}</dd>
-            </div>
-          ))}
-        </dl>
       </Card>
     </div>
   );

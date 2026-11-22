@@ -98,4 +98,7 @@ export const errorMessage = (error, fallback = 'Something went wrong. Please try
   return data.message || fallback;
 };
 
+/** A 409 from the API: the request lost a race (e.g. the last parking space). */
+export const isConflict = (error) => error?.response?.status === 409;
+
 export default client;

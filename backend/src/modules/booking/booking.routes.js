@@ -34,6 +34,14 @@ router.get(
   controller.lotBookings,
 );
 
+// Floor plan with this booking's spot highlighted and directions from the gate.
+router.get(
+  '/:id/spot-map',
+  authenticate,
+  validate({ params: z.object({ id: z.string().trim().min(6).max(40) }) }),
+  controller.spotMap,
+);
+
 // Accepts either the Mongo id or the human-facing booking code (BK-XXXXXXXX).
 router.get(
   '/:id',

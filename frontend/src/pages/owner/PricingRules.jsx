@@ -3,7 +3,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { errorMessage } from '../../api/client';
 import { pricingApi } from '../../api/endpoints';
 import { Alert, Button, Card, Checkbox, Field, Input, Select, Spinner } from '../../components/ui';
-import { money } from '../../utils/format';
+import { money, offeredVehicleTypes, VEHICLE_TYPES, vehicleLabel } from '../../utils/format';
 import { axisTick, gridStroke, series, tooltipLabelStyle, tooltipStyle } from '../../utils/chartTheme';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -31,7 +31,9 @@ const PricingRules = ({ lotId, lot }) => {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const [simVehicleType, setSimVehicleType] = useState(lot?.capacity?.four_wheeler > 0 ? 'four_wheeler' : 'two_wheeler');
+  // Only types the facility prices can be simulated; cars first when offered.
+  const simTypes = offeredVehicleTypes(lot).length ? offeredVehicleTypes(lot) : VEHICLE_TYPES;
+  const [simVehicleType, setSimVehicleType] = useState(simTypes.includes('car') ? 'car' : simTypes[0]);
   const [simOccupancy, setSimOccupancy] = useState(0.5);
   const [curve, setCurve] = useState([]);
   const [simulating, setSimulating] = useState(false);
@@ -123,12 +125,15 @@ const PricingRules = ({ lotId, lot }) => {
         </Alert>
       )}
 
-      <Card title="Price simulation" subtitle="How the hourly rate moves across a full day under these rules.">
+      <Card title="Price simulation">
         <div className="grid items-end gap-4 sm:grid-cols-3">
           <Field label="Vehicle type">
             <Select value={simVehicleType} onChange={(event) => setSimVehicleType(event.target.value)}>
-              <option value="four_wheeler">Four-wheeler</option>
-              <option value="two_wheeler">Two-wheeler</option>
+              {simTypes.map((type) => (
+                <option key={type} value={type}>
+                  {vehicleLabel(type)}
+                </option>
+              ))}
             </Select>
           </Field>
           <Field label={`Assumed occupancy: ${Math.round(simOccupancy * 100)}%`}>
@@ -161,12 +166,9 @@ const PricingRules = ({ lotId, lot }) => {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <p className="mt-2 text-caption text-label-secondary">
-          Simulation reflects the saved rules. Save your changes to see them here.
-        </p>
       </Card>
 
-      <Card title="Occupancy tiers" subtitle="The fuller the facility, the higher the price.">
+      <Card title="Occupancy tiers">
         <div className="space-y-3">
           {rule.occupancyTiers.map((tier, index) => (
             <div key={index} className="grid items-end gap-3 sm:grid-cols-3">
@@ -199,13 +201,12 @@ const PricingRules = ({ lotId, lot }) => {
           ))}
         </div>
         <p className="mt-3 text-caption text-label-secondary">
-          Tiers are matched in ascending order; the highest tier must reach 100% occupancy.
+          The highest tier must reach 100%.
         </p>
       </Card>
 
       <Card
         title="Peak hour windows"
-        subtitle="A booking that touches a window pays that premium. Overlapping windows take the highest."
         actions={
           <Button
             tone="secondary"
@@ -221,7 +222,7 @@ const PricingRules = ({ lotId, lot }) => {
         }
       >
         {rule.peakHours.length === 0 ? (
-          <p className="text-footnote text-label-secondary">No peak windows configured. Prices stay flat across the day.</p>
+          <p className="text-footnote text-label-secondary">No peak windows configured.</p>
         ) : (
           <div className="space-y-4">
             {rule.peakHours.map((window, index) => (
@@ -275,7 +276,7 @@ const PricingRules = ({ lotId, lot }) => {
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Location zone" subtitle="A premium for high-demand areas.">
+        <Card title="Location zone">
           <Field label="Zone">
             <Select
               value={rule.locationFactor?.zoneLabel || 'standard'}
@@ -290,7 +291,7 @@ const PricingRules = ({ lotId, lot }) => {
           </Field>
         </Card>
 
-        <Card title="Multiplier limits" subtitle="The combined multiplier is clamped to this range.">
+        <Card title="Multiplier limits">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Minimum">
               <Input
@@ -316,7 +317,7 @@ const PricingRules = ({ lotId, lot }) => {
         </Card>
       </div>
 
-      <Card title="Day of week" subtitle="A multiplier per weekday, applied on top of the other factors.">
+      <Card title="Day of week">
         <div className="grid gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {DAYS.map((day, index) => (
             <Field key={day} label={day.slice(0, 3)}>

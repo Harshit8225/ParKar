@@ -115,7 +115,7 @@ const OwnerLanding = () => {
         <p>
           {ownerProfile?.businessName ? `${ownerProfile.businessName} on ParKar. ` : ''}
           Your bays are listed to drivers searching nearby, priced by rules you control, and opened by number-plate
-          recognition when a booked vehicle arrives. This page is the how and why; live numbers are on your dashboard.
+          recognition when a booked vehicle arrives.
         </p>
       </HeroBand>
 
@@ -126,10 +126,6 @@ const OwnerLanding = () => {
           <h2 className="mt-3.5 text-title-1 text-label">
             The work between a booking and a barrier
           </h2>
-          <p className="mt-3 text-footnote leading-relaxed text-label-secondary">
-            Most of what follows happens without anyone on site touching it. Knowing where the seams are is what lets
-            you price and staff a facility well.
-          </p>
         </div>
 
         <div className="mt-9 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -187,9 +183,6 @@ const OwnerLanding = () => {
           <h2 className="mt-3.5 text-title-1 text-label">
             What each number is actually telling you
           </h2>
-          <p className="mt-3 text-footnote leading-relaxed text-label-secondary">
-            The dashboard reports these for any date range. The interpretation is the part that is easy to get wrong.
-          </p>
         </div>
 
         <dl className="mt-9 grid gap-x-10 gap-y-7 md:grid-cols-2">

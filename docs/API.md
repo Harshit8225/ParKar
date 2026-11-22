@@ -126,7 +126,7 @@ Public (auth optional). Returns approved facilities only.
 | `latitude`, `longitude` | Both or neither. Enables geo search and `distanceKm` in results |
 | `radiusKm` | 0.1–50, default 5 |
 | `city`, `q` | Alternative to coordinates; at least one of coordinates / `city` / `q` is required |
-| `vehicleType` | `two_wheeler` \| `four_wheeler` |
+| `vehicleType` | `bike` \| `car` \| `bus` |
 | `evCharging`, `open24x7`, `availableOnly` | `"true"` / `"false"` |
 | `minRating`, `maxRate` | `maxRate` needs `vehicleType` |
 | `sortBy` | `distance` (default) \| `rate` \| `rating` \| `availability` |
@@ -161,18 +161,28 @@ Owner/admin. Creates a facility in `pending` status and seeds a default pricing 
     "latitude": 12.9757,
     "longitude": 77.6068
   },
-  "capacity": { "two_wheeler": 60, "four_wheeler": 120 },
-  "hourlyRate": { "two_wheeler": 20, "four_wheeler": 50 },
+  "capacity": { "bike": 60, "car": 120, "bus": 4 },
+  "hourlyRate": { "bike": 20, "car": 50, "bus": 150 },
+  "layout": {
+    "flexibleRows": [{ "label": "A", "units": 16 }, { "label": "B", "units": 16 }],
+    "batchWindowMs": 3000,
+    "contentionThreshold": 2
+  },
   "operatingHours": { "is24x7": false, "openTime": "06:00", "closeTime": "23:00" },
   "amenities": { "evCharging": true, "covered": true, "security": true, "cctv": true },
   "pricing": { "dynamicPricingEnabled": true, "overstayMultiplier": 1.5, "graceMinutes": 10, "minChargeHours": 1 }
 }
 ```
 
-Rejected if total capacity is zero, or if a vehicle type has capacity but no rate.
+`capacity` is the number of **dedicated bays** per vehicle type (labelled `BK-01`, `C-01`, `BUS-01`…).
+`layout.flexibleRows` describes a **shared flexible area**: rows of bike-sized markers (`A1`, `A2`…) that any type can use — a bike takes 1 marker, a car 2, a bus 4 (1 car space = 2 bikes, 1 bus space = 2 cars = 4 bikes). Row lengths that are multiples of 4 let every marker serve a bus. `batchWindowMs` and `contentionThreshold` tune the booking optimiser (see `POST /bookings`).
+
+Rejected if there are no bays and no flexible area, or if a vehicle type has bays but no rate. A type with rate 0 is not offered.
+
+Lot responses include `available` (per type: free bays + what fits in the flexible area — the flexible part is shared, so the numbers overlap), `maxCapacity` and `flexibleArea`. The owner/admin `GET /parking/:id/manage` also returns `spotMap`: every bay and marker with the booking holding it.
 
 ### `PATCH /parking/:id`
-Owner (own facility) or admin. Every field is optional. **Capacity cannot be reduced below `occupied + reserved`** — that would drive availability negative and start refusing valid bookings (409).
+Owner (own facility) or admin. Every field is optional. **A bay or flexible marker assigned to a current booking cannot be removed** — reducing bays below the highest held bay number, or shrinking/removing a row with a held marker, is refused (409).
 
 ### `GET /parking/:id/manage`
 Owner/admin. Facility plus its pricing rule, active session count and upcoming booking count.
@@ -190,7 +200,7 @@ Public. Prices a prospective booking without creating anything.
 ```json
 {
   "parkingLotId": "…",
-  "vehicleType": "four_wheeler",
+  "vehicleType": "car",
   "expectedEntryTime": "2026-09-07T10:00:00.000Z",
   "expectedExitTime": "2026-09-07T12:00:00.000Z"
 }
@@ -233,7 +243,7 @@ Driver only. Creates the reservation, holds the slot, and returns a payment orde
 {
   "parkingLotId": "…",
   "vehicleNumber": "KA01AB1234",
-  "vehicleType": "four_wheeler",
+  "vehicleType": "car",
   "expectedEntryTime": "2026-09-07T10:00:00.000Z",
   "durationHours": 2
 }
@@ -245,9 +255,27 @@ Give either `durationHours` (1–24) or `expectedExitTime`. Rules enforced:
 - Entry time may not be in the past beyond a 15-minute tolerance (400).
 - The facility must be open at both entry and exit time (400).
 - One vehicle may not hold two overlapping bookings anywhere, including unpaid holds (409).
-- A slot must be free — checked and taken inside a distributed lock (409).
+- Space must be available — decided inside a distributed lock (409).
 
-Returns `{ booking, payment }`. The booking starts as `pending_payment` and the slot is already held. Outside production with no Razorpay keys, `payment` carries `mock: true` plus `mockPaymentId` and `mockSignature` so the flow can be completed locally.
+**Space allocation.** While the lot has room, the request is allocated immediately (first come, first served). When the requested type has `layout.contentionThreshold` or fewer spaces left (or a batch is already open), the request joins a Redis batch for `layout.batchWindowMs` (default 3 s). When the window closes, a revenue optimiser picks the set of requests in the batch that earns the most while fitting the free bays and flexible area — so this call can take a few seconds near capacity, and may return **409** with `details.reason` `outbid` (space went to other simultaneous bookings) or `full`. Without Redis, every request is served as it arrives.
+
+Returns `{ booking, payment }`. The booking starts as `pending_payment` and its space is already held. `booking.spot` says where to park:
+
+```json
+{ "zone": "flexible", "label": "A5–A8", "row": "A", "start": 4, "size": 4, "vehicleType": "bus",
+  "instructions": "Flexible zone, row A: park across markers A5–A8" }
+```
+
+A dedicated bay looks like `{ "zone": "fixed", "label": "C-04", "bay": 4, ... }`. The gate's entry response repeats the spot ("Proceed to C-04"). The spot is released when payment fails, the unpaid hold expires, or the vehicle exits.
+
+### `GET /bookings/:id/spot-map`
+The booking's driver, the lot owner, or an admin. The lot as a floor plan for navigation:
+
+- `sections`: numbered from the entrance gate, in the order a driver meets them (dedicated bike, car and bus bays drawn in aisles of 10 / 8 / 4, then each flexible row). Each has `cells` marked `taken` / `mine`; flexible cells also carry `joinPrev` / `joinNext` when one vehicle spans several markers. Other drivers' bookings are never exposed.
+- `mySpot`: the booking's spot and its section, plus `aisle` and `position` for a dedicated bay.
+- `directions`: step-by-step text, e.g. *"Go to aisle 2 and park in bay C-10, the 2nd bay from the left."*
+
+### The booking's driver, the lot owner, or an admin. The lot as a floor plan for navigation:  numbered from the entrance gate (dedicated bike, car and bus bays drawn in aisles of 10 / 8 / 4, then each flexible row), each with  marked  / . Other drivers' bookings are never exposed. Also returns  (with  and  for a dedicated bay) and step-by-step , e.g. *"Go to aisle 2 and park in bay C-10, the 2nd bay from the left."* Outside production with no Razorpay keys, `payment` carries `mock: true` plus `mockPaymentId` and `mockSignature` so the flow can be completed locally.
 
 Booking statuses: `pending_payment` → `confirmed` → `active` (vehicle inside) → `completed`; or `payment_failed`.
 

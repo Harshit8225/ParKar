@@ -21,6 +21,18 @@ const start = async () => {
     logger.info(`API base: http://localhost:${env.port}${env.apiPrefix}`);
   });
 
+  // A listen failure - almost always EADDRINUSE from an instance that is still
+  // running - would otherwise reach uncaughtException and exit 0, which nodemon
+  // reports as a clean exit and never restarts from.
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error(`Port ${env.port} is already in use - stop the other instance and retry.`);
+    } else {
+      logger.error('Server error:', err.message);
+    }
+    process.exit(1);
+  });
+
   // Keep-alive slightly above a typical 60s proxy idle timeout so Nginx, not
   // Node, is the one to close idle connections.
   server.keepAliveTimeout = 65000;
@@ -30,7 +42,7 @@ const start = async () => {
 };
 
 /** Finish in-flight requests, then release the database and cache handles. */
-const shutdown = async (signal) => {
+const shutdown = async (signal, exitCode = 0) => {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info(`${signal} received - shutting down gracefully`);
@@ -47,7 +59,7 @@ const shutdown = async (signal) => {
     await disconnectDatabase();
     clearTimeout(forceExit);
     logger.info('Shutdown complete');
-    process.exit(0);
+    process.exit(exitCode);
   } catch (err) {
     logger.error('Error during shutdown:', err.message);
     process.exit(1);
@@ -65,7 +77,7 @@ process.on('unhandledRejection', (reason) => {
 // the supervisor (Docker/systemd) restart it cleanly.
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception:', err.stack || err.message);
-  shutdown('uncaughtException');
+  shutdown('uncaughtException', 1);
 });
 
 if (require.main === module) {

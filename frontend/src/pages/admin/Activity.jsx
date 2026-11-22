@@ -57,8 +57,7 @@ const Activity = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeader eyebrow="Platform admin" title="Live parking activity" subtitle={<>Every vehicle currently inside a facility.
-            {lastUpdated && ` Updated ${dateTime(lastUpdated)}.`}</>} />
+        <PageHeader eyebrow="Platform admin" title="Live parking activity" subtitle={lastUpdated && `Updated ${dateTime(lastUpdated)}`} />
         <Button tone="secondary" onClick={() => load(page)}>
           Refresh now
         </Button>
@@ -76,7 +75,7 @@ const Activity = () => {
         {loading ? (
           <Spinner />
         ) : data.items.length === 0 ? (
-          <EmptyState title="No vehicles parked" description="Nothing is inside any facility right now." />
+          <EmptyState title="No vehicles parked" />
         ) : (
           <>
             <Table headers={['Session', 'Vehicle', 'Facility', 'Driver', 'Entered', 'Booked exit', 'Parked', 'State']}>
@@ -113,7 +112,7 @@ const Activity = () => {
       </Card>
 
       {data.flaggedEvents?.length > 0 && (
-        <Card padded={false} title="Recently flagged gate events" subtitle="Plate mismatches and refused exits worth a look.">
+        <Card padded={false} title="Recently flagged gate events">
           <Table headers={['Time', 'Facility', 'Gate', 'Plate read', 'Result', 'Message']}>
             {data.flaggedEvents.map((event) => (
               <tr key={event._id} className="bg-rose-50">

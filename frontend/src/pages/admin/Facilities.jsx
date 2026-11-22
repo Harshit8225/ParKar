@@ -19,7 +19,7 @@ import {
   Table,
   Td,
 } from '../../components/ui';
-import { dateOnly, money, percent } from '../../utils/format';
+import { dateOnly, flexibleUnits, money, percent, VEHICLE_TYPES, vehicleCounts, vehicleLabel } from '../../utils/format';
 
 const STATUSES = [
   { value: '', label: 'All facilities' },
@@ -105,7 +105,7 @@ const Facilities = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Platform admin" title="Parking facilities" subtitle="Approve new facilities, and deactivate ones that must stop taking bookings." />
+      <PageHeader eyebrow="Platform admin" title="Parking facilities" />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
       {notice && <Alert kind="success" onDismiss={() => setNotice('')}>{notice}</Alert>}
@@ -138,7 +138,7 @@ const Facilities = () => {
         {loading ? (
           <Spinner />
         ) : data.items.length === 0 ? (
-          <EmptyState title="No facilities found" description="Adjust the filters to see more." />
+          <EmptyState title="No facilities found" />
         ) : (
           <>
             <Table headers={['Facility', 'Owner', 'City', 'Capacity', 'Occupancy', 'Commission', 'Status', 'Actions']}>
@@ -154,7 +154,10 @@ const Facilities = () => {
                   </Td>
                   <Td>{lot.location.city}</Td>
                   <Td>
-                    {lot.capacity.two_wheeler} 2W / {lot.capacity.four_wheeler} 4W
+                    <span className="block text-caption">{vehicleCounts(lot.capacity, { skipZero: true })}</span>
+                    {flexibleUnits(lot) > 0 && (
+                      <span className="block text-caption text-label-secondary">+ {flexibleUnits(lot)} flexible units</span>
+                    )}
                   </Td>
                   <Td>{percent((lot.occupancyRate || 0) * 100, 0)}</Td>
                   <Td>{lot.commissionPercent !== undefined ? `${lot.commissionPercent}%` : 'Default'}</Td>
@@ -204,10 +207,16 @@ const Facilities = () => {
                 { label: 'Facility', value: review.name },
                 { label: 'Owner', value: `${review.owner?.name} (${review.owner?.email})` },
                 { label: 'Address', value: `${review.location.address}, ${review.location.city}` },
-                { label: 'Capacity', value: `${review.capacity.two_wheeler} two-wheeler, ${review.capacity.four_wheeler} four-wheeler` },
+                { label: 'Dedicated bays', value: vehicleCounts(review.capacity, { skipZero: true, separator: ', ' }) },
+                {
+                  label: 'Flexible area',
+                  value: flexibleUnits(review) > 0 ? `${flexibleUnits(review)} units` : 'None',
+                },
                 {
                   label: 'Rates',
-                  value: `${money(review.hourlyRate.two_wheeler)} 2W / ${money(review.hourlyRate.four_wheeler)} 4W per hour`,
+                  value: `${VEHICLE_TYPES.filter((type) => Number(review.hourlyRate?.[type]) > 0)
+                    .map((type) => `${vehicleLabel(type)} ${money(review.hourlyRate[type])}`)
+                    .join(' / ') || '-'} per hour`,
                 },
                 {
                   label: 'Hours',
@@ -221,10 +230,7 @@ const Facilities = () => {
             />
 
             {reviewForm.decision === 'approve' && (
-              <Field
-                label="Platform commission for this facility (%)"
-                hint="Leave blank to use the platform default."
-              >
+              <Field label="Platform commission for this facility (%)">
                 <Input
                   type="number"
                   min="0"
@@ -238,11 +244,7 @@ const Facilities = () => {
 
             <Field
               label="Note"
-              hint={
-                reviewForm.decision === 'reject' || reviewForm.decision === 'deactivate'
-                  ? 'The owner sees this reason on their facility page.'
-                  : 'Optional.'
-              }
+              hint={reviewForm.decision === 'reject' || reviewForm.decision === 'deactivate' ? undefined : 'Optional'}
             >
               <Input
                 value={reviewForm.reason}

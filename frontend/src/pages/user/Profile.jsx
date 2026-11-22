@@ -201,8 +201,7 @@ const Profile = () => {
             <div className="min-w-0">
               <h2 className="text-headline text-amber-900">Your profile is not complete</h2>
               <p className="mt-1 text-footnote leading-relaxed text-amber-800/85">
-                Still to add: {missing.map((field) => FIELD_LABELS[field] || field).join(', ')}. Facilities use these
-                to identify you at the gate, so finish them before your first booking.
+                Still to add: {missing.map((field) => FIELD_LABELS[field] || field).join(', ')}.
               </p>
             </div>
           </div>
@@ -248,7 +247,6 @@ const Profile = () => {
             field="phone"
             type="tel"
             placeholder="+91 98765 43210"
-            hint="Facility staff use this if there is a problem at the gate."
             onSave={saveField}
           />
           <DetailRow
@@ -256,7 +254,6 @@ const Profile = () => {
             value={user.drivingLicenseNumber}
             field="drivingLicenseNumber"
             placeholder="UP53 20220001234"
-            hint="As printed on your licence. Spaces and dashes are ignored."
             transform={(value) => value.toUpperCase()}
             onSave={saveField}
           />
@@ -316,12 +313,9 @@ const Profile = () => {
               </div>
             </form>
           ) : (
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-footnote text-label-secondary">Last changed is not tracked.</p>
-              <Button size="sm" tone="secondary" onClick={() => setPasswordOpen(true)}>
-                Change
-              </Button>
-            </div>
+            <Button size="sm" tone="secondary" onClick={() => setPasswordOpen(true)}>
+              Change
+            </Button>
           )}
         </Card>
       </div>

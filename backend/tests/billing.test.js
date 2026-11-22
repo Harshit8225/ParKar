@@ -26,7 +26,7 @@ const session = {
   actualEntryTime: entryTime,
   expectedExitTime,
   vehicleNumber: 'KA01AB1234',
-  vehicleType: 'four_wheeler',
+  vehicleType: 'car',
 };
 
 describe('computeFinalBill', () => {

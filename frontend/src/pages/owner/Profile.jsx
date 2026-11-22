@@ -226,8 +226,7 @@ const Profile = () => {
             <div className="min-w-0">
               <h2 className="text-headline text-amber-900">Your profile is not complete</h2>
               <p className="mt-1 text-footnote leading-relaxed text-amber-800/85">
-                Still to add: {missing.map((field) => FIELD_LABELS[field] || field).join(', ')}. Drivers and platform
-                admins see this when they look up who runs a facility.
+                Still to add: {missing.map((field) => FIELD_LABELS[field] || field).join(', ')}.
               </p>
             </div>
           </div>
@@ -278,7 +277,6 @@ const Profile = () => {
             value={profile?.contactEmail}
             field="contactEmail"
             type="email"
-            hint="Shown to drivers on your facility pages."
             onSave={saveBusinessField}
           />
           <DetailRow
@@ -303,7 +301,7 @@ const Profile = () => {
           />
         </Card>
 
-        <Card title="Payout" subtitle="Where your earnings are settled after commission." padded={false}>
+        <Card title="Payout" padded={false}>
           <DetailRow
             label="Account holder"
             value={profile?.payoutDetails?.accountHolder}
@@ -320,7 +318,7 @@ const Profile = () => {
             }
             field="accountNumberLast4"
             placeholder="4321"
-            hint="Only the last four digits are stored."
+            hint="Last four digits only"
             onSave={savePayoutField}
           />
           <DetailRow
@@ -333,7 +331,7 @@ const Profile = () => {
           />
         </Card>
 
-        <Card title="Password" subtitle="Changing it signs out every other session.">
+        <Card title="Password">
           {passwordOpen ? (
             <form onSubmit={savePassword} className="space-y-4">
               {passwordState.error && <Alert kind="error">{passwordState.error}</Alert>}
@@ -347,7 +345,7 @@ const Profile = () => {
                   autoComplete="current-password"
                 />
               </Field>
-              <Field label="New password" required hint="At least 8 characters, with a capital, a lowercase and a number.">
+              <Field label="New password" required hint="8+ characters, with upper and lower case and a number">
                 <Input
                   type="password"
                   value={passwords.newPassword}
@@ -384,12 +382,9 @@ const Profile = () => {
               </div>
             </form>
           ) : (
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-footnote text-label-secondary">Last changed is not tracked.</p>
-              <Button size="sm" tone="secondary" onClick={() => setPasswordOpen(true)}>
-                Change
-              </Button>
-            </div>
+            <Button size="sm" tone="secondary" onClick={() => setPasswordOpen(true)}>
+              Change
+            </Button>
           )}
         </Card>
       </div>

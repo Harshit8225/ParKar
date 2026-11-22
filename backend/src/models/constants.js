@@ -1,7 +1,18 @@
 'use strict';
 
 const ROLES = { USER: 'user', OWNER: 'owner', ADMIN: 'admin' };
-const VEHICLE_TYPES = { TWO_WHEELER: 'two_wheeler', FOUR_WHEELER: 'four_wheeler' };
+const VEHICLE_TYPES = { BIKE: 'bike', CAR: 'car', BUS: 'bus' };
+
+/**
+ * Space each vehicle takes, in bike-sized units: 1 car space holds 2 bikes and
+ * 1 bus space holds 2 cars (= 4 bikes). Each size divides the next, which is
+ * what lets the flexible area be packed without fragmentation (see
+ * modules/allocation/spot.layout.js).
+ */
+const SPACE_UNITS = { bike: 1, car: 2, bus: 4 };
+
+/** Where an assigned spot lives: a dedicated bay, or the shared flexible area. */
+const SPOT_ZONE = { FIXED: 'fixed', FLEXIBLE: 'flexible' };
 
 const LOT_STATUS = {
   PENDING: 'pending',      // awaiting platform-admin approval
@@ -47,6 +58,8 @@ module.exports = {
   ROLES,
   VEHICLE_TYPES,
   VEHICLE_TYPE_LIST,
+  SPACE_UNITS,
+  SPOT_ZONE,
   LOT_STATUS,
   BOOKING_STATUS,
   SESSION_STATUS,

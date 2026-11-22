@@ -80,10 +80,6 @@ const LocationPicker = ({ latitude, longitude, onPick, className = '' }) => {
           />
         )}
       </MapContainer>
-
-      <p className="border-t border-separator bg-slate-50 px-3 py-2 text-caption text-label-secondary">
-        {hasPin ? 'Drag the pin, or click the map to move it.' : 'Click the map to drop the entrance pin.'}
-      </p>
     </div>
   );
 };

@@ -80,7 +80,7 @@ const AdminLanding = () => {
       >
         <p>
           You decide which facilities drivers can see, which accounts stay open, and what the platform takes from each
-          booking. This page is what each of those levers does; the dashboard has the current numbers.
+          booking.
         </p>
       </HeroBand>
 

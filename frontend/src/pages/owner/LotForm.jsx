@@ -12,6 +12,7 @@ import {
   Textarea,
 } from '../../components/ui';
 import Icon from '../../components/Icon';
+import { flexibleCapacity, VEHICLE_META, VEHICLE_TYPES, vehicleCount, vehicleCounts } from '../../utils/format';
 
 /**
  * Registration and editing share one form; `id` decides which.
@@ -36,10 +37,13 @@ const EMPTY = {
   pincode: '',
   latitude: '',
   longitude: '',
-  capacityTwo: 0,
-  capacityFour: 0,
-  rateTwo: 0,
-  rateFour: 0,
+  capacity: { bike: 0, car: 0, bus: 0 },
+  hourlyRate: { bike: 0, car: 0, bus: 0 },
+  // Shared zone: rows of bike-sized markers any vehicle type can park across.
+  flexibleRows: [],
+  // Optional allocation tuning; blank means "leave it to the server".
+  batchWindowMs: '',
+  contentionThreshold: '',
   is24x7: false,
   openTime: '06:00',
   closeTime: '23:00',
@@ -57,7 +61,8 @@ const Section = ({ title, children }) => (
 );
 
 /** Capacity and rate for one vehicle type, kept side by side deliberately. */
-const VehicleBlock = ({ icon, title, capacity, rate, onCapacity, onRate }) => {
+const VehicleBlock = ({ type, capacity, rate, onCapacity, onRate }) => {
+  const meta = VEHICLE_META[type];
   const needsRate = Number(capacity) > 0 && !(Number(rate) > 0);
 
   return (
@@ -67,13 +72,16 @@ const VehicleBlock = ({ icon, title, capacity, rate, onCapacity, onRate }) => {
       }`}
     >
       <div className="flex items-center gap-2.5">
-        <Icon name={icon} size={5} className="text-label" />
-        <p className="text-footnote font-semibold text-label">{title}</p>
+        <Icon name={meta.icon} size={5} className="text-label" />
+        <p className="text-footnote font-semibold text-label">{meta.label}</p>
+        <span className="ml-auto text-caption text-label-tertiary">
+          {meta.units} unit{meta.units === 1 ? '' : 's'}
+        </span>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Field label="Total slots">
-          <Input type="number" min="0" value={capacity} onChange={onCapacity} required />
+      <div className="mt-4 grid gap-3">
+        <Field label="Dedicated bays">
+          <Input type="number" min="0" step="1" value={capacity} onChange={onCapacity} required />
         </Field>
         <Field label="Base rate / hour">
           <Input type="number" min="0" step="0.5" value={rate} onChange={onRate} />
@@ -81,10 +89,124 @@ const VehicleBlock = ({ icon, title, capacity, rate, onCapacity, onRate }) => {
       </div>
 
       {needsRate && (
-        <p className="mt-2 text-caption font-medium text-amber-800">
-          Set a rate, or drop the slot count to zero.
+        <p className="mt-2 text-caption font-medium text-amber-800">Set a rate, or drop the bay count to zero.</p>
+      )}
+    </div>
+  );
+};
+
+const ROW_LABEL = /^[A-Z0-9]{1,3}$/;
+
+/** The next unused single letter, so "Add row" usually needs no typing. */
+const nextRowLabel = (rows) => {
+  const used = new Set(rows.map((row) => row.label));
+  for (let code = 65; code <= 90; code += 1) {
+    const label = String.fromCharCode(code);
+    if (!used.has(label)) return label;
+  }
+  return '';
+};
+
+/** Problems with the flexible rows, as one message, or '' when they are fine. */
+const flexibleRowsProblem = (rows) => {
+  const seen = new Set();
+  for (const row of rows) {
+    if (!ROW_LABEL.test(row.label)) return `Row label "${row.label || ' '}" must be 1-3 letters or digits.`;
+    if (seen.has(row.label)) return `Row label ${row.label} is used twice.`;
+    seen.add(row.label);
+    const units = Number(row.units);
+    if (!Number.isInteger(units) || units < 1 || units > 200) return `Row ${row.label} needs 1-200 units.`;
+  }
+  return '';
+};
+
+/**
+ * Editor for the shared flexible zone. Each row is a painted line of
+ * bike-sized markers; a car parks across two and a bus across four, so the
+ * same row serves whatever mix turns up.
+ */
+const FlexibleAreaEditor = ({ rows, onChange }) => {
+  // `key` is a local id only: labels are editable, so they cannot be React keys.
+  const updateRow = (key, field, value) =>
+    onChange(rows.map((row) => (row.key === key ? { ...row, [field]: value } : row)));
+  const removeRow = (key) => onChange(rows.filter((row) => row.key !== key));
+  const addRow = () => {
+    const key = rows.reduce((max, row) => Math.max(max, row.key), 0) + 1;
+    onChange([...rows, { key, label: nextRowLabel(rows), units: 16 }]);
+  };
+
+  const fit = flexibleCapacity(rows);
+  const problem = flexibleRowsProblem(rows);
+
+  return (
+    <div className="rounded-control border border-dashed border-separator-strong p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-footnote font-semibold text-label">Flexible area</p>
+        <Button tone="secondary" size="sm" icon="plus" onClick={addRow}>
+          Add row
+        </Button>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="mt-4 text-caption text-label-tertiary">No flexible rows.</p>
+      ) : (
+        <div className="mt-4 space-y-2.5">
+          {rows.map((row) => {
+            const units = Number(row.units) || 0;
+            return (
+              <div key={row.key} className="flex flex-wrap items-end gap-3">
+                <Field label="Row" className="w-20">
+                  <Input
+                    value={row.label}
+                    onChange={(event) =>
+                      updateRow(row.key, 'label', event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))
+                    }
+                    maxLength={3}
+                    required
+                    className="font-mono uppercase"
+                  />
+                </Field>
+                <Field label="Units" className="w-28">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="200"
+                    step="1"
+                    value={row.units}
+                    onChange={(event) => updateRow(row.key, 'units', event.target.value)}
+                    required
+                  />
+                </Field>
+                <p className="min-w-0 flex-1 pb-2.5 text-caption text-label-secondary">
+                  {vehicleCount('bike', units)} / {vehicleCount('car', Math.floor(units / 2))} /{' '}
+                  {vehicleCount('bus', Math.floor(units / 4))}
+                  {units % 4 !== 0 && units > 0 && (
+                    <span className="text-amber-700"> &middot; last {units % 4} unit(s) too short for a bus</span>
+                  )}
+                </p>
+                <Button
+                  tone="secondary"
+                  size="sm"
+                  icon="trash"
+                  onClick={() => removeRow(row.key)}
+                  aria-label={`Remove row ${row.label}`}
+                  className="mb-1"
+                >
+                  Remove
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {rows.length > 0 && (
+        <p className="mt-4 border-t border-separator pt-3 text-footnote text-label">
+          When empty, fits up to{' '}
+          <span className="font-semibold">{vehicleCounts(fit, { separator: ' / ' })}</span>
         </p>
       )}
+      {problem && <p className="mt-2 text-caption font-medium text-amber-800">{problem}</p>}
     </div>
   );
 };
@@ -118,10 +240,15 @@ const LotForm = () => {
           pincode: lot.location.pincode || '',
           latitude: lot.location.latitude ?? '',
           longitude: lot.location.longitude ?? '',
-          capacityTwo: lot.capacity.two_wheeler,
-          capacityFour: lot.capacity.four_wheeler,
-          rateTwo: lot.hourlyRate.two_wheeler,
-          rateFour: lot.hourlyRate.four_wheeler,
+          capacity: Object.fromEntries(VEHICLE_TYPES.map((type) => [type, lot.capacity?.[type] ?? 0])),
+          hourlyRate: Object.fromEntries(VEHICLE_TYPES.map((type) => [type, lot.hourlyRate?.[type] ?? 0])),
+          flexibleRows: (lot.layout?.flexibleRows || lot.flexibleArea?.rows || []).map((row, index) => ({
+            key: index + 1,
+            label: row.label,
+            units: row.units,
+          })),
+          batchWindowMs: lot.layout?.batchWindowMs ?? '',
+          contentionThreshold: lot.layout?.contentionThreshold ?? '',
           is24x7: lot.operatingHours.is24x7,
           openTime: lot.operatingHours.openTime || '06:00',
           closeTime: lot.operatingHours.closeTime || '23:00',
@@ -137,6 +264,9 @@ const LotForm = () => {
 
   const update = (field) => (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
   const set = (field) => (value) => setForm((prev) => ({ ...prev, [field]: value }));
+  /** For the per-vehicle objects: updateVehicle('capacity', 'car'). */
+  const updateVehicle = (group, type) => (event) =>
+    setForm((prev) => ({ ...prev, [group]: { ...prev[group], [type]: event.target.value } }));
 
   const pickOnMap = (latitude, longitude) =>
     setForm((prev) => ({ ...prev, latitude: latitude.toFixed(6), longitude: longitude.toFixed(6) }));
@@ -207,8 +337,14 @@ const LotForm = () => {
       latitude: Number(form.latitude),
       longitude: Number(form.longitude),
     },
-    capacity: { two_wheeler: Number(form.capacityTwo), four_wheeler: Number(form.capacityFour) },
-    hourlyRate: { two_wheeler: Number(form.rateTwo), four_wheeler: Number(form.rateFour) },
+    capacity: Object.fromEntries(VEHICLE_TYPES.map((type) => [type, Number(form.capacity[type]) || 0])),
+    hourlyRate: Object.fromEntries(VEHICLE_TYPES.map((type) => [type, Number(form.hourlyRate[type]) || 0])),
+    // Always sent, so removing every row on an edit really clears the zone.
+    layout: {
+      flexibleRows: form.flexibleRows.map((row) => ({ label: row.label, units: Number(row.units) })),
+      batchWindowMs: form.batchWindowMs === '' ? undefined : Number(form.batchWindowMs),
+      contentionThreshold: form.contentionThreshold === '' ? undefined : Number(form.contentionThreshold),
+    },
     operatingHours: { is24x7: form.is24x7, openTime: form.openTime, closeTime: form.closeTime },
     amenities: {
       evCharging: form.evCharging,
@@ -218,10 +354,30 @@ const LotForm = () => {
     },
   });
 
+  /** The server validates too; these catch the common slips before a round trip. */
+  const capacityProblem = () => {
+    const rowsProblem = flexibleRowsProblem(form.flexibleRows);
+    if (rowsProblem) return rowsProblem;
+    const unpriced = VEHICLE_TYPES.filter(
+      (type) => Number(form.capacity[type]) > 0 && !(Number(form.hourlyRate[type]) > 0),
+    );
+    if (unpriced.length) return `Set an hourly rate for ${unpriced.map((type) => VEHICLE_META[type].plural).join(' and ')}, or set their bays to zero.`;
+    const fixedBays = VEHICLE_TYPES.some((type) => Number(form.capacity[type]) > 0);
+    if (!fixedBays && form.flexibleRows.length === 0) return 'Add some dedicated bays or at least one flexible row.';
+    if (!VEHICLE_TYPES.some((type) => Number(form.hourlyRate[type]) > 0)) return 'Set an hourly rate for at least one vehicle type.';
+    return '';
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setNotice('');
+    const problem = capacityProblem();
+    if (problem) {
+      setError(problem);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     setSubmitting(true);
     try {
       if (isEdit) {
@@ -380,24 +536,49 @@ const LotForm = () => {
           </Section>
 
           <Section title="Capacity and rates">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <VehicleBlock
-                icon="bike"
-                title="Two-wheelers"
-                capacity={form.capacityTwo}
-                rate={form.rateTwo}
-                onCapacity={update('capacityTwo')}
-                onRate={update('rateTwo')}
-              />
-              <VehicleBlock
-                icon="car"
-                title="Four-wheelers"
-                capacity={form.capacityFour}
-                rate={form.rateFour}
-                onCapacity={update('capacityFour')}
-                onRate={update('rateFour')}
-              />
+            <div className="grid gap-4 sm:grid-cols-3">
+              {VEHICLE_TYPES.map((type) => (
+                <VehicleBlock
+                  key={type}
+                  type={type}
+                  capacity={form.capacity[type]}
+                  rate={form.hourlyRate[type]}
+                  onCapacity={updateVehicle('capacity', type)}
+                  onRate={updateVehicle('hourlyRate', type)}
+                />
+              ))}
             </div>
+
+            <div className="mt-4">
+              <FlexibleAreaEditor rows={form.flexibleRows} onChange={set('flexibleRows')} />
+            </div>
+
+            <details className="mt-4">
+              <summary className="cursor-pointer text-caption font-medium text-brand-700">Advanced allocation settings</summary>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <Field label="Batch window (ms)">
+                  <Input
+                    type="number"
+                    min="0"
+                    max="10000"
+                    step="100"
+                    value={form.batchWindowMs}
+                    onChange={update('batchWindowMs')}
+                    placeholder="3000"
+                  />
+                </Field>
+                <Field label="Contention threshold">
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={form.contentionThreshold}
+                    onChange={update('contentionThreshold')}
+                    placeholder="2"
+                  />
+                </Field>
+              </div>
+            </details>
           </Section>
 
           <Section title="Operating hours">

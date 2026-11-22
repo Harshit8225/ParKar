@@ -81,7 +81,7 @@ const Users = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Platform admin" title="User management" subtitle="Drivers and parking owners. Deactivating an owner also takes their facilities out of search." />
+      <PageHeader eyebrow="Platform admin" title="User management" />
 
       {error && <Alert kind="error" onDismiss={() => setError('')}>{error}</Alert>}
       {notice && <Alert kind="success" onDismiss={() => setNotice('')}>{notice}</Alert>}
@@ -113,7 +113,7 @@ const Users = () => {
         {loading ? (
           <Spinner />
         ) : data.items.length === 0 ? (
-          <EmptyState title="No users found" description="Adjust the filters to see more." />
+          <EmptyState title="No users found" />
         ) : (
           <>
             <Table headers={['Name', 'Email', 'Role', 'Activity', 'Joined', 'Last login', 'Status', 'Actions']}>

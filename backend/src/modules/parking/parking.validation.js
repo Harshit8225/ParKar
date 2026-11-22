@@ -5,9 +5,37 @@ const { LOT_STATUS } = require('../../models/constants');
 const v = require('../../utils/validators');
 
 const perVehicleNumbers = z.object({
-  two_wheeler: v.money.default(0),
-  four_wheeler: v.money.default(0),
+  bike: v.money.default(0),
+  car: v.money.default(0),
+  bus: v.money.default(0),
 });
+
+const perVehicleCounts = z.object({
+  bike: z.coerce.number().int().min(0).max(5000).default(0),
+  car: z.coerce.number().int().min(0).max(5000).default(0),
+  bus: z.coerce.number().int().min(0).max(5000).default(0),
+});
+
+/**
+ * Shared flexible area: rows of bike-sized markers (bike 1, car 2, bus 4).
+ * Row lengths that are multiples of 4 let every marker be used by a bus.
+ */
+const layoutSchema = z.object({
+  flexibleRows: z
+    .array(
+      z.object({
+        label: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{1,3}$/, 'Row label must be 1-3 letters or digits'),
+        units: z.coerce.number().int().min(1).max(200),
+      }),
+    )
+    .max(50)
+    .default([])
+    .refine((rows) => new Set(rows.map((r) => r.label)).size === rows.length, { message: 'Row labels must be unique' }),
+  batchWindowMs: z.coerce.number().int().min(0).max(10000).optional(),
+  contentionThreshold: z.coerce.number().int().min(0).max(100).optional(),
+});
+
+const flexibleUnits = (layout) => (layout?.flexibleRows || []).reduce((sum, row) => sum + row.units, 0);
 
 const locationSchema = z.object({
   address: z.string().trim().min(5, 'Address is too short').max(300),
@@ -53,27 +81,37 @@ const createLotSchema = z
       })
       .optional(),
     location: locationSchema,
-    capacity: perVehicleNumbers,
+    capacity: perVehicleCounts,
     hourlyRate: perVehicleNumbers,
+    layout: layoutSchema.optional(),
     operatingHours: operatingHoursSchema.optional(),
     amenities: amenitiesSchema.optional(),
     pricing: pricingConfigSchema.optional(),
     images: z.array(z.string().trim().url('Images must be valid URLs')).max(10).optional(),
   })
-  // A lot with no slots at all could never be booked, so reject it up front.
-  .refine((value) => value.capacity.two_wheeler + value.capacity.four_wheeler > 0, {
-    path: ['capacity'],
-    message: 'Configure capacity for at least one vehicle type',
+  // A lot with no space at all could never be booked, so reject it up front.
+  .refine(
+    (value) => value.capacity.bike + value.capacity.car + value.capacity.bus + flexibleUnits(value.layout) > 0,
+    { path: ['capacity'], message: 'Configure fixed bays or a flexible area' },
+  )
+  // Fixed bays without a rate are unbookable; the pricing engine would reject them later.
+  .refine((value) => value.capacity.bike === 0 || value.hourlyRate.bike > 0, {
+    path: ['hourlyRate', 'bike'],
+    message: 'Set a bike rate when bike bays are configured',
   })
-  // Capacity without a rate is unbookable; the pricing engine would reject it later.
-  .refine((value) => value.capacity.two_wheeler === 0 || value.hourlyRate.two_wheeler > 0, {
-    path: ['hourlyRate', 'two_wheeler'],
-    message: 'Set a two-wheeler rate when two-wheeler capacity is configured',
+  .refine((value) => value.capacity.car === 0 || value.hourlyRate.car > 0, {
+    path: ['hourlyRate', 'car'],
+    message: 'Set a car rate when car bays are configured',
   })
-  .refine((value) => value.capacity.four_wheeler === 0 || value.hourlyRate.four_wheeler > 0, {
-    path: ['hourlyRate', 'four_wheeler'],
-    message: 'Set a four-wheeler rate when four-wheeler capacity is configured',
-  });
+  .refine((value) => value.capacity.bus === 0 || value.hourlyRate.bus > 0, {
+    path: ['hourlyRate', 'bus'],
+    message: 'Set a bus rate when bus bays are configured',
+  })
+  // A flexible area is only usable by types that have a rate.
+  .refine(
+    (value) => flexibleUnits(value.layout) === 0 || value.hourlyRate.bike + value.hourlyRate.car + value.hourlyRate.bus > 0,
+    { path: ['hourlyRate'], message: 'Set a rate for at least one vehicle type that may use the flexible area' },
+  );
 
 const updateLotSchema = z
   .object({
@@ -86,8 +124,9 @@ const updateLotSchema = z
       })
       .optional(),
     location: locationSchema.partial().optional(),
-    capacity: perVehicleNumbers.partial().optional(),
+    capacity: perVehicleCounts.partial().optional(),
     hourlyRate: perVehicleNumbers.partial().optional(),
+    layout: layoutSchema.partial().optional(),
     operatingHours: z
       .object({
         is24x7: z.coerce.boolean().optional(),

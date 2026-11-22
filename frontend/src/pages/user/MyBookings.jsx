@@ -17,6 +17,7 @@ import {
   Table,
   Td,
 } from '../../components/ui';
+import { SpotTag } from '../../components/ParkingSpot';
 import { dateTime, duration, money, vehicleLabel } from '../../utils/format';
 
 /**
@@ -87,11 +88,6 @@ const MyBookings = () => {
       <PageHeader
         eyebrow="Driver"
         title="My bookings"
-        subtitle={
-          tab === 'bookings'
-            ? 'Every reservation you have made, newest first.'
-            : 'Every time your vehicle entered and left a facility.'
-        }
         actions={
           <Field label="Filter" className="w-56">
             <Select value={status} onChange={(event) => setStatus(event.target.value)}>
@@ -115,19 +111,12 @@ const MyBookings = () => {
         ) : data.items.length === 0 ? (
           <EmptyState
             title={tab === 'bookings' ? 'No bookings found' : 'No parking sessions yet'}
-            description={
-              status
-                ? 'Try clearing the filter.'
-                : tab === 'bookings'
-                  ? 'Book a parking slot and it will show up here.'
-                  : 'Your entry and exit record appears here once you have parked.'
-            }
             action={<LinkButton to="/">Book parking</LinkButton>}
           />
         ) : (
           <>
             {tab === 'bookings' ? (
-              <Table headers={['Booking ID', 'Facility', 'Vehicle', 'Booked window', 'Amount', 'Status', '']}>
+              <Table headers={['Booking ID', 'Facility', 'Vehicle', 'Spot', 'Booked window', 'Amount', 'Status', '']}>
                 {data.items.map((booking) => (
                   <tr key={booking.id} className="hover:bg-slate-50">
                     <Td className="font-mono text-caption">{booking.bookingId}</Td>
@@ -138,6 +127,9 @@ const MyBookings = () => {
                     <Td>
                       <span className="block font-mono text-caption">{booking.vehicleNumber}</span>
                       <span className="block text-caption text-label-secondary">{vehicleLabel(booking.vehicleType)}</span>
+                    </Td>
+                    <Td>
+                      <SpotTag spot={booking.spot} />
                     </Td>
                     <Td>
                       <span className="block text-caption">{dateTime(booking.expectedEntryTime)}</span>

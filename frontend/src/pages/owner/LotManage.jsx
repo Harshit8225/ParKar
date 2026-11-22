@@ -20,7 +20,21 @@ import {
   Td,
 } from '../../components/ui';
 import PricingRules from './PricingRules';
-import { dateTime, duration, money, percent, statusLabel, vehicleLabel } from '../../utils/format';
+import { SpotTag } from '../../components/ParkingSpot';
+import {
+  dateTime,
+  duration,
+  flexibleCapacity,
+  flexibleUnits,
+  money,
+  offeredVehicleTypes,
+  percent,
+  statusLabel,
+  VEHICLE_META,
+  VEHICLE_TYPES,
+  vehicleCounts,
+  vehicleLabel,
+} from '../../utils/format';
 import Icon from '../../components/Icon';
 import { axisTick, gridStroke, series, tooltipLabelStyle, tooltipStyle } from '../../utils/chartTheme';
 
@@ -121,7 +135,7 @@ const LotManage = () => {
         className="max-w-full overflow-x-auto"
       />
 
-      {tab === 'overview' && <Overview lot={lot} analytics={analytics} />}
+      {tab === 'overview' && <Overview lot={lot} analytics={analytics} onRefresh={loadLot} />}
       {tab === 'reservations' && <Reservations lotId={id} />}
       {tab === 'sessions' && <Sessions lotId={id} />}
       {tab === 'transactions' && <Transactions lotId={id} />}
@@ -131,112 +145,283 @@ const LotManage = () => {
   );
 };
 
-const Overview = ({ lot, analytics }) => (
-  <div className="space-y-4">
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-      <StatCard label="Occupancy" value={percent((lot.occupancyRate || 0) * 100)} tone="brand" />
-      <StatCard label="Vehicles parked" value={lot.occupied.two_wheeler + lot.occupied.four_wheeler} />
-      <StatCard label="Reserved (not arrived)" value={lot.reserved.two_wheeler + lot.reserved.four_wheeler} />
-      <StatCard
-        label="Free slots"
-        value={lot.available.two_wheeler + lot.available.four_wheeler}
-        hint={`${lot.available.two_wheeler} 2W / ${lot.available.four_wheeler} 4W`}
-        tone="positive"
-      />
-      <StatCard label="Revenue (30d)" value={money(analytics?.revenue?.window?.gross || 0)} />
-      <StatCard label="Avg. duration" value={duration(analytics?.averageParkingDuration?.averageParkedMinutes || 0)} />
-    </div>
+/** Sum a { bike, car, bus } object. */
+const total = (counts) => VEHICLE_TYPES.reduce((sum, type) => sum + (Number(counts?.[type]) || 0), 0);
 
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card title="Capacity by vehicle type">
-        <div className="space-y-4">
-          {['two_wheeler', 'four_wheeler'].map((type) => {
-            const capacity = lot.capacity[type];
-            if (!capacity) return null;
-            const occupied = lot.occupied[type];
-            const reserved = lot.reserved[type];
-            return (
-              <div key={type}>
-                <div className="flex items-baseline justify-between text-footnote">
-                  <span className="font-medium text-label">{vehicleLabel(type)}</span>
-                  <span className="text-label-secondary">
-                    {occupied} parked + {reserved} reserved of {capacity}
-                  </span>
-                </div>
-                <div className="mt-1.5 flex h-2.5 overflow-hidden rounded-capsule bg-slate-100">
-                  <span className="block bg-brand-600" style={{ width: `${(occupied / capacity) * 100}%` }} title="Parked" />
-                  <span className="block bg-amber-400" style={{ width: `${(reserved / capacity) * 100}%` }} title="Reserved" />
-                </div>
-                <p className="mt-1 text-caption text-label-secondary">
-                  Base rate {money(lot.hourlyRate[type])}/hr &middot; {lot.available[type]} free
-                </p>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-4 flex gap-4 border-t border-separator pt-3 text-caption text-label-secondary">
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded bg-brand-600" /> Parked
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded bg-amber-400" /> Reserved
-          </span>
-        </div>
-      </Card>
+const Overview = ({ lot, analytics, onRefresh }) => {
+  const offered = offeredVehicleTypes(lot);
+  // `available` overlaps between types (the flexible zone is shared), so it is
+  // never summed - each type is listed as "up to N" instead.
+  const headline = offered.includes('car') ? 'car' : offered[0];
+  const flexRows = lot.layout?.flexibleRows || lot.flexibleArea?.rows || [];
+  const flexUnits = flexibleUnits(lot);
 
-      <Card title="Configuration">
-        <dl className="space-y-2 text-footnote">
-          {[
-            ['Operating hours', lot.operatingHours.is24x7 ? '24/7' : `${lot.operatingHours.openTime} - ${lot.operatingHours.closeTime}`],
-            ['Dynamic pricing', lot.pricing?.dynamicPricingEnabled ? 'Enabled' : 'Disabled'],
-            ['Overstay multiplier', `${lot.pricing?.overstayMultiplier}x`],
-            ['Grace period', `${lot.pricing?.graceMinutes} minutes`],
-            ['Minimum charge', `${lot.pricing?.minChargeHours} hour(s)`],
-            ['Platform commission', lot.commissionPercent !== undefined ? `${lot.commissionPercent}%` : 'Platform default'],
-            ['EV charging', lot.amenities.evCharging ? 'Available' : 'Not available'],
-            ['Rating', lot.rating.count ? `${lot.rating.average.toFixed(1)} from ${lot.rating.count} reviews` : 'No reviews yet'],
-          ].map(([label, value]) => (
-            <div key={label} className="flex justify-between gap-4 border-b border-separator pb-1.5 last:border-0">
-              <dt className="text-label-secondary">{label}</dt>
-              <dd className="text-right font-medium text-label">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      </Card>
-    </div>
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <StatCard label="Occupancy" value={percent((lot.occupancyRate || 0) * 100)} tone="brand" />
+        <StatCard label="Vehicles parked" value={total(lot.occupied)} />
+        <StatCard label="Reserved (not arrived)" value={total(lot.reserved)} />
+        <StatCard
+          label="Can still take"
+          value={headline ? `${lot.available?.[headline] ?? 0} ${VEHICLE_META[headline].plural}` : '-'}
+          hint={
+            offered.length > 1
+              ? `or ${vehicleCounts(lot.available, { types: offered.filter((type) => type !== headline) })}`
+              : undefined
+          }
+          tone="positive"
+        />
+        <StatCard label="Revenue (30d)" value={money(analytics?.revenue?.window?.gross || 0)} />
+        <StatCard label="Avg. duration" value={duration(analytics?.averageParkingDuration?.averageParkedMinutes || 0)} />
+      </div>
 
-    {analytics && (
+      {lot.spotMap && <SpotMap spotMap={lot.spotMap} onRefresh={onRefresh} />}
+
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Revenue, last 30 days">
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={analytics.dailySeries} margin={{ top: 5, right: 10, bottom: 0, left: -15 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                <XAxis dataKey="date" tick={axisTick} tickFormatter={(value) => value.slice(5)} />
-                <YAxis tick={axisTick} />
-                <Tooltip formatter={(value) => money(value)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
-                <Line type="monotone" dataKey="revenue" stroke={series[0]} strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+        <Card title="Capacity by vehicle type">
+          <div className="space-y-4">
+            {VEHICLE_TYPES.map((type) => {
+              const capacity = lot.capacity?.[type] || 0;
+              const occupied = lot.occupied?.[type] || 0;
+              const reserved = lot.reserved?.[type] || 0;
+              const available = lot.available?.[type] || 0;
+              if (!capacity && !offered.includes(type) && !occupied && !reserved) return null;
+              // What this type could reach right now: already placed plus what
+              // still fits. Fixed bays alone undercount once the flexible zone is used.
+              const scale = Math.max(1, occupied + reserved + available, capacity);
+              return (
+                <div key={type}>
+                  <div className="flex items-baseline justify-between gap-3 text-footnote">
+                    <span className="font-medium text-label">{vehicleLabel(type)}</span>
+                    <span className="text-right text-label-secondary">
+                      {occupied} parked + {reserved} reserved &middot; up to {available} more
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex h-2.5 overflow-hidden rounded-capsule bg-slate-100">
+                    <span className="block bg-brand-600" style={{ width: `${(occupied / scale) * 100}%` }} title="Parked" />
+                    <span className="block bg-amber-400" style={{ width: `${(reserved / scale) * 100}%` }} title="Reserved" />
+                  </div>
+                  <p className="mt-1 text-caption text-label-secondary">
+                    {offered.includes(type) ? `Base rate ${money(lot.hourlyRate[type])}/hr` : 'Not offered (no rate)'} &middot;{' '}
+                    {capacity} dedicated bay{capacity === 1 ? '' : 's'}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-4 flex gap-4 border-t border-separator pt-3 text-caption text-label-secondary">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded bg-brand-600" /> Parked
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded bg-amber-400" /> Reserved
+            </span>
           </div>
         </Card>
-        <Card title="Vehicle arrivals by hour">
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={analytics.peakHours} margin={{ top: 5, right: 5, bottom: 0, left: -25 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                <XAxis dataKey="hour" tick={axisTick} interval={3} />
-                <YAxis tick={axisTick} allowDecimals={false} />
-                <Tooltip labelFormatter={(hour) => `${String(hour).padStart(2, '0')}:00`} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
-                <Bar dataKey="entries" fill={series[0]} radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+
+        <Card title="Configuration">
+          <dl className="space-y-2 text-footnote">
+            {[
+              ['Operating hours', lot.operatingHours.is24x7 ? '24/7' : `${lot.operatingHours.openTime} - ${lot.operatingHours.closeTime}`],
+              [
+                'Flexible area',
+                flexUnits > 0
+                  ? `${flexRows.length || '-'} row(s), ${flexUnits} units (up to ${vehicleCounts(flexibleCapacity(flexRows), { separator: ' / ' })})`
+                  : 'None',
+              ],
+              ['Booking batch window', lot.layout?.batchWindowMs !== undefined ? `${lot.layout.batchWindowMs} ms` : 'Default'],
+              ['Contention threshold', lot.layout?.contentionThreshold ?? 'Default'],
+              ['Dynamic pricing', lot.pricing?.dynamicPricingEnabled ? 'Enabled' : 'Disabled'],
+              ['Overstay multiplier', `${lot.pricing?.overstayMultiplier}x`],
+              ['Grace period', `${lot.pricing?.graceMinutes} minutes`],
+              ['Minimum charge', `${lot.pricing?.minChargeHours} hour(s)`],
+              ['Platform commission', lot.commissionPercent !== undefined ? `${lot.commissionPercent}%` : 'Platform default'],
+              ['EV charging', lot.amenities.evCharging ? 'Available' : 'Not available'],
+              ['Rating', lot.rating.count ? `${lot.rating.average.toFixed(1)} from ${lot.rating.count} reviews` : 'No reviews yet'],
+            ].map(([label, value]) => (
+              <div key={label} className="flex justify-between gap-4 border-b border-separator pb-1.5 last:border-0">
+                <dt className="text-label-secondary">{label}</dt>
+                <dd className="text-right font-medium text-label">{value}</dd>
+              </div>
+            ))}
+          </dl>
         </Card>
       </div>
-    )}
-  </div>
-);
+
+      {analytics && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card title="Revenue, last 30 days">
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={analytics.dailySeries} margin={{ top: 5, right: 10, bottom: 0, left: -15 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                  <XAxis dataKey="date" tick={axisTick} tickFormatter={(value) => value.slice(5)} />
+                  <YAxis tick={axisTick} />
+                  <Tooltip formatter={(value) => money(value)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
+                  <Line type="monotone" dataKey="revenue" stroke={series[0]} strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+          <Card title="Vehicle arrivals by hour">
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={analytics.peakHours} margin={{ top: 5, right: 5, bottom: 0, left: -25 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                  <XAxis dataKey="hour" tick={axisTick} interval={3} />
+                  <YAxis tick={axisTick} allowDecimals={false} />
+                  <Tooltip labelFormatter={(hour) => `${String(hour).padStart(2, '0')}:00`} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
+                  <Bar dataKey="entries" fill={series[0]} radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------ spot map ---- */
+
+/**
+ * One colour per vehicle type, from the ramps index.css re-maps for dark mode,
+ * so the map reads the same in either theme. Free space stays neutral.
+ */
+const VEHICLE_TONE = {
+  bike: 'bg-emerald-100 text-emerald-800 ring-emerald-300',
+  car: 'bg-brand-100 text-brand-800 ring-brand-300',
+  bus: 'bg-amber-100 text-amber-800 ring-amber-300',
+};
+const FREE_TONE = 'bg-surface text-label-tertiary ring-separator';
+
+/**
+ * Live picture of the floor: dedicated bays as tiles grouped by type, and each
+ * flexible row as a strip of markers coloured by whatever is parked across them.
+ */
+const SpotMap = ({ spotMap, onRefresh }) => {
+  const [refreshing, setRefreshing] = useState(false);
+  const fixed = spotMap.fixed || {};
+  const rows = spotMap.rows || [];
+  const fixedTypes = VEHICLE_TYPES.filter((type) => fixed[type]?.length);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  if (!fixedTypes.length && !rows.length) return null;
+
+  return (
+    <Card
+      title="Spot map"
+      actions={
+        <Button tone="secondary" size="sm" icon="refresh" loading={refreshing} onClick={refresh}>
+          Refresh
+        </Button>
+      }
+    >
+      <div className="space-y-5">
+        {fixedTypes.map((type) => {
+          const bays = fixed[type];
+          const taken = bays.filter((bay) => bay.taken).length;
+          return (
+            <div key={type}>
+              <p className="flex items-center gap-1.5 text-footnote font-medium text-label">
+                <Icon name={VEHICLE_META[type].icon} size={4} className="text-label-secondary" />
+                {vehicleLabel(type)} bays
+                <span className="font-normal text-label-secondary">
+                  &middot; {taken} of {bays.length} taken
+                </span>
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {bays.map((bay) => (
+                  <span
+                    key={bay.label}
+                    title={`${bay.label} - ${bay.taken ? `booking ${bay.bookingId || '(unknown)'}` : 'free'}`}
+                    className={`inline-flex h-8 items-center justify-center rounded-inner px-2 font-mono text-caption font-medium ring-1 ring-inset ${
+                      bay.taken ? VEHICLE_TONE[type] : FREE_TONE
+                    } ${type === 'bus' ? 'min-w-20' : type === 'car' ? 'min-w-14' : 'min-w-11'}`}
+                  >
+                    {bay.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        {rows.length > 0 && (
+          <div className={fixedTypes.length ? 'border-t border-separator pt-5' : ''}>
+            <p className="text-footnote font-medium text-label">Flexible area</p>
+            <div className="mt-2 space-y-3">
+              {rows.map((row) => {
+                const cells = row.cells || [];
+                const used = cells.filter((cell) => cell.vehicleType).length;
+                return (
+                  <div key={row.label}>
+                    <p className="text-caption text-label-secondary">
+                      Row <span className="font-mono font-semibold text-label">{row.label}</span> &middot; {used} of{' '}
+                      {row.units ?? cells.length} units in use
+                    </p>
+                    {/* Scrolls sideways rather than wrapping: a row is a line
+                        on the ground, and wrapping would break that picture. */}
+                    <div className="mt-1.5 overflow-x-auto pb-1">
+                      <div className="flex w-max">
+                        {cells.map((cell, index) => {
+                          const prev = cells[index - 1];
+                          const next = cells[index + 1];
+                          // Cells of one booking join into a single block.
+                          const joinsPrev = cell.bookingId && prev?.bookingId === cell.bookingId;
+                          const joinsNext = cell.bookingId && next?.bookingId === cell.bookingId;
+                          const tip = [
+                            cell.label,
+                            cell.vehicleType ? vehicleLabel(cell.vehicleType) : 'free',
+                            cell.spotLabel,
+                            cell.bookingId && `booking ${cell.bookingId}`,
+                          ]
+                            .filter(Boolean)
+                            .join(' - ');
+                          return (
+                            <span
+                              key={cell.index ?? index}
+                              title={tip}
+                              className={`grid h-9 w-7 place-items-center font-mono text-[10px] ring-1 ring-inset ${
+                                cell.vehicleType ? VEHICLE_TONE[cell.vehicleType] : FREE_TONE
+                              } ${joinsPrev ? '' : 'ml-0.5 rounded-l-inner'} ${joinsNext ? '' : 'rounded-r-inner'}`}
+                            >
+                              {(cell.index ?? index) + 1}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-4 border-t border-separator pt-3 text-caption text-label-secondary">
+        {VEHICLE_TYPES.map((type) => (
+          <span key={type} className="flex items-center gap-1.5">
+            <span className={`h-2.5 w-2.5 rounded ring-1 ring-inset ${VEHICLE_TONE[type]}`} /> {vehicleLabel(type)}
+          </span>
+        ))}
+        <span className="flex items-center gap-1.5">
+          <span className={`h-2.5 w-2.5 rounded ring-1 ring-inset ${FREE_TONE}`} /> Free
+        </span>
+      </div>
+    </Card>
+  );
+};
 
 /** Generic paginated list, so each tab is a thin wrapper over a fetcher. */
 const useList = (fetcher, deps = []) => {
@@ -278,7 +463,6 @@ const Reservations = ({ lotId }) => {
     <Card
       padded={false}
       title="Reservations"
-      subtitle="Every booking made for this facility."
       actions={
         <Field className="w-48">
           <Select value={status} onChange={(event) => setStatus(event.target.value)}>
@@ -296,10 +480,10 @@ const Reservations = ({ lotId }) => {
       {loading ? (
         <Spinner />
       ) : items.length === 0 ? (
-        <EmptyState title="No reservations" description="Bookings for this facility will appear here." />
+        <EmptyState title="No reservations" />
       ) : (
         <>
-          <Table headers={['Booking', 'Driver', 'Vehicle', 'Entry window', 'Duration', 'Amount', 'Status']}>
+          <Table headers={['Booking', 'Driver', 'Vehicle', 'Spot', 'Entry window', 'Duration', 'Amount', 'Status']}>
             {items.map((booking) => (
               <tr key={booking.id} className="hover:bg-slate-50">
                 <Td className="font-mono text-caption">{booking.bookingId}</Td>
@@ -310,6 +494,9 @@ const Reservations = ({ lotId }) => {
                 <Td>
                   <span className="block font-mono text-caption">{booking.vehicleNumber}</span>
                   <span className="block text-caption text-label-secondary">{vehicleLabel(booking.vehicleType)}</span>
+                </Td>
+                <Td>
+                  <SpotTag spot={booking.spot} />
                 </Td>
                 <Td>
                   <span className="block text-caption">{dateTime(booking.expectedEntryTime)}</span>
@@ -342,7 +529,6 @@ const Sessions = ({ lotId }) => {
     <Card
       padded={false}
       title="Parking sessions"
-      subtitle="Vehicles currently inside and completed sessions."
       actions={
         <Field className="w-48">
           <Select value={status} onChange={(event) => setStatus(event.target.value)}>
@@ -358,7 +544,7 @@ const Sessions = ({ lotId }) => {
       {loading ? (
         <Spinner />
       ) : items.length === 0 ? (
-        <EmptyState title="No sessions" description="Vehicles admitted at the gate will appear here." />
+        <EmptyState title="No sessions" />
       ) : (
         <>
           <Table headers={['Session', 'Vehicle', 'Driver', 'Entry', 'Booked exit', 'Parked', 'Overstay', 'Due']}>
@@ -422,7 +608,7 @@ const Transactions = ({ lotId }) => {
         {loading ? (
           <Spinner />
         ) : items.length === 0 ? (
-          <EmptyState title="No transactions" description="Payments for this facility will appear here." />
+          <EmptyState title="No transactions" />
         ) : (
           <>
             <Table headers={['Transaction', 'Date', 'Driver', 'Booking', 'Purpose', 'Amount', 'Commission', 'Your share', 'Status']}>
@@ -473,7 +659,6 @@ const GateEvents = ({ lotId }) => {
     <Card
       padded={false}
       title="Gate recognition events"
-      subtitle="Every camera capture at this facility, whether or not the barrier opened."
       actions={
         <Field className="w-52">
           <Select value={flaggedOnly ? 'flagged' : 'all'} onChange={(event) => setFlaggedOnly(event.target.value === 'flagged')}>
@@ -487,7 +672,7 @@ const GateEvents = ({ lotId }) => {
       {loading ? (
         <Spinner />
       ) : items.length === 0 ? (
-        <EmptyState title="No gate events" description="Camera captures at the entry and exit gates will appear here." />
+        <EmptyState title="No gate events" />
       ) : (
         <>
           <Table headers={['Time', 'Gate', 'Plate read', 'Confidence', 'Result', 'Booking', 'Message']}>

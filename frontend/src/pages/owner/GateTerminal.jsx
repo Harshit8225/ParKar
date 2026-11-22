@@ -305,11 +305,6 @@ const GateTerminal = () => {
               </Button>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
             </div>
-
-            <p className="mt-3 text-caption text-label-secondary">
-              Reading a plate fills in the vehicle number below. Check it, correct it if the camera got it wrong, then open
-              the gate.
-            </p>
           </Card>
 
           <Card title="Vehicle number">
@@ -340,13 +335,7 @@ const GateTerminal = () => {
                 </Button>
               </div>
 
-              <p className="text-caption text-label-secondary">
-                {reading
-                  ? 'Reading the number plate...'
-                  : detectedPlate
-                    ? 'Filled in from the camera - edit it if it is wrong.'
-                    : 'Type the vehicle number, or capture a photo above.'}
-              </p>
+              {reading && <p className="text-caption text-label-secondary">Reading the number plate...</p>}
 
               {notice && <Alert kind="warning">{notice}</Alert>}
 
@@ -402,13 +391,14 @@ const GateResult = ({ result, busy, mode, submitted }) => {
     return (
       <Card title="Gate decision">
         <div className="py-12 text-center text-footnote text-label-secondary">
-          Capture a vehicle to see the decision here.
+          Waiting for a vehicle.
         </div>
       </Card>
     );
   }
 
   const allowed = result.allowed;
+  const spot = result.spot || result.booking?.spot;
 
   // The plate the gate acted on is always the one the operator confirmed, so
   // the backend's confidence is a flat 1. Report where it actually came from.
@@ -427,6 +417,16 @@ const GateResult = ({ result, busy, mode, submitted }) => {
           {allowed ? 'BARRIER OPEN' : 'BARRIER CLOSED'}
         </p>
         <p className={`mt-2 text-footnote ${allowed ? 'text-emerald-800' : 'text-rose-800'}`}>{result.message}</p>
+
+        {/* Where the attendant waves the vehicle to: the bay or flexible-zone
+            markers the booking was assigned. */}
+        {allowed && spot?.label && (
+          <div className="mx-auto mt-4 w-fit rounded-control bg-surface px-5 py-3 ring-1 ring-inset ring-emerald-200">
+            <p className="eyebrow text-label-tertiary">Direct to</p>
+            <p className="mt-0.5 font-mono text-title-1 tracking-wider text-label">{spot.label}</p>
+            {spot.instructions && <p className="mt-1 text-caption text-label-secondary">{spot.instructions}</p>}
+          </div>
+        )}
       </div>
 
       <div className="mt-4 space-y-4">
@@ -473,6 +473,7 @@ const GateResult = ({ result, busy, mode, submitted }) => {
                 rows={[
                   { label: 'Booking ID', value: result.booking.bookingId },
                   { label: 'Booked vehicle', value: result.booking.vehicleNumber },
+                  { label: 'Assigned spot', value: spot?.label },
                   { label: 'Booked until', value: result.booking.expectedExitTime ? dateTime(result.booking.expectedExitTime) : undefined },
                   { label: 'Entry time', value: result.booking.expectedEntryTime ? dateTime(result.booking.expectedEntryTime) : undefined },
                   { label: 'Duration', value: result.booking.durationHours ? `${result.booking.durationHours}h` : undefined },

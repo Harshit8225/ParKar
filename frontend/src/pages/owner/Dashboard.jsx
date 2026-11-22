@@ -29,7 +29,7 @@ import {
   Td,
 } from '../../components/ui';
 import { axisTick, gridStroke, series, tooltipLabelStyle, tooltipStyle } from '../../utils/chartTheme';
-import { duration, money, percent } from '../../utils/format';
+import { duration, money, offeredVehicleTypes, percent, vehicleCounts } from '../../utils/format';
 
 const RANGES = [
   { value: 'today', label: 'Today' },
@@ -84,7 +84,6 @@ const Dashboard = () => {
         <Card>
           <EmptyState
             title="No facilities yet"
-            description="Register your first parking facility. A platform administrator will review and approve it."
             action={
               <LinkButton to="/owner/lots/new" icon="plus">Register a facility</LinkButton>
             }
@@ -120,7 +119,7 @@ const Dashboard = () => {
               </div>
             </Card>
 
-            <Card title="Entries by hour" subtitle="When vehicles actually arrive">
+            <Card title="Entries by hour">
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={peakHours} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
@@ -162,7 +161,7 @@ const Dashboard = () => {
             </Card>
 
             <Card title="Your facilities" className="lg:col-span-2" padded={false}>
-              <Table headers={['Facility', 'Status', 'Occupancy', 'Free (2W / 4W)', '']}>
+              <Table headers={['Facility', 'Status', 'Occupancy', 'Free now (up to)', '']}>
                 {lots.map((lot) => (
                   <tr key={lot.id} className="hover:bg-slate-50">
                     <Td>
@@ -177,8 +176,8 @@ const Dashboard = () => {
                         <span className="text-caption tabular-nums">{percent(lot.occupancyRate, 0)}</span>
                       </div>
                     </Td>
-                    <Td className="tabular-nums">
-                      {lot.available.two_wheeler} / {lot.available.four_wheeler}
+                    <Td className="tabular-nums text-caption">
+                      {vehicleCounts(lot.available, { types: offeredVehicleTypes(lot) })}
                     </Td>
                     <Td>
                       <Link to={`/owner/lots/${lot.id}`} className="tap rounded-capsule px-2.5 py-1 text-footnote font-medium text-brand-700 hover:bg-brand-50">

@@ -71,9 +71,15 @@ export const pricingApi = {
 };
 
 export const bookingApi = {
-  create: (payload) => client.post('/bookings', payload).then(unwrap),
+  /**
+   * Near capacity the server batches simultaneous requests for a few seconds and
+   * runs an allocation model before answering, so this call can take 5-6 s. The
+   * timeout is pinned here so it never drops below that if the default changes.
+   */
+  create: (payload) => client.post('/bookings', payload, { timeout: 30000 }).then(unwrap),
   mine: (params) => client.get('/bookings/mine', { params }).then(unwrapList),
   detail: (id) => client.get(`/bookings/${id}`).then(unwrap),
+  spotMap: (id) => client.get(`/bookings/${id}/spot-map`).then(unwrap),
   forLot: (lotId, params) => client.get(`/bookings/lot/${lotId}`, { params }).then(unwrapList),
 };
 
