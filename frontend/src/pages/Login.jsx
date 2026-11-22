@@ -96,7 +96,7 @@ const Login = () => {
           </p>
         </form>
 
-        <div className="mt-5 rounded-card border border-dashed border-separator-strong p-4">
+        {/* <div className="mt-5 rounded-card border border-dashed border-separator-strong p-4">
           <p className="eyebrow text-label-tertiary">Seeded demo accounts</p>
           <ul className="mt-3 space-y-1 text-footnote">
             {DEMO_ACCOUNTS.map((account) => (
@@ -115,7 +115,7 @@ const Login = () => {
           <p className="mt-3 text-caption text-label-tertiary">
             Password for all seeded accounts: <span className="font-mono text-label-secondary">Parking@123</span>
           </p>
-        </div>
+        </div> */}
       </div>
     </div>
   );
